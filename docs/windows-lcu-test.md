@@ -1,6 +1,6 @@
 # Windows 选人识别测试
 
-安装包：`dist/aram-augment-advisor-0.2.0-win-x64-setup.exe`，适用于 Windows 10/11 x64。
+安装包：`dist/aram-augment-advisor-0.2.1-win-x64-setup.exe`，适用于 Windows 10/11 x64。
 
 1. 将安装包复制到 Windows 电脑，双击安装并打开“海克斯大乱斗助手”。不用安装 Node.js，也不用先同步数据，包内已有 16.21.5 统计数据。
 2. 在同一台电脑启动国服 League Client，登录并进入大乱斗选人界面。
