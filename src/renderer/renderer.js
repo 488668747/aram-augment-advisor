@@ -65,22 +65,62 @@ function setImage(image, url, alt) {
 
 function renderAugments(augments) {
   augmentList.replaceChildren();
-  for (const augment of augments.slice(0, 20)) {
-    const card = document.createElement('div');
-    card.className = 'augment';
-    const icon = document.createElement('img');
-    setImage(icon, augment.iconUrl, augment.name);
-    const main = document.createElement('div');
-    main.className = 'augment-main';
-    const name = document.createElement('div');
-    name.className = 'augment-name';
-    name.textContent = augment.name;
-    const meta = document.createElement('div');
-    meta.className = 'augment-meta';
-    meta.textContent = `${formatPercent(augment.stats?.winRate)} · ${augment.stats?.games ?? 0} 场`;
-    main.append(name, meta);
-    card.append(icon, main);
-    augmentList.append(card);
+  const rarities = [
+    { key: 'prismatic', rarity: 2, title: '棱彩胜率（彩色）' },
+    { key: 'gold', rarity: 1, title: '黄金胜率（金色）' },
+    { key: 'silver', rarity: 0, title: '白银胜率（白色）' },
+  ];
+  for (const { key, rarity, title } of rarities) {
+    // 主进程已经按当前英雄胜率排序；过滤后保留各稀有度内部的排名。
+    const matches = augments.filter(augment =>
+      augment.rarityName ? augment.rarityName === key : augment.rarity === rarity);
+    const group = document.createElement('section');
+    group.className = `augment-group augment-group--${key}`;
+    group.setAttribute('aria-labelledby', `augment-heading-${key}`);
+    const header = document.createElement('div');
+    header.className = 'augment-group-header';
+    const heading = document.createElement('h4');
+    heading.id = `augment-heading-${key}`;
+    heading.textContent = title;
+    const count = document.createElement('span');
+    count.className = 'augment-count';
+    count.textContent = `${matches.length} 个海克斯`;
+    header.append(heading, count);
+    const list = document.createElement('div');
+    list.className = 'augment-list';
+    list.tabIndex = 0;
+    list.setAttribute('aria-label', `${title}排行榜`);
+    if (matches.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'search-hint';
+      empty.textContent = '当前英雄暂无该类海克斯数据';
+      list.append(empty);
+    }
+    matches.forEach((augment, index) => {
+      const card = document.createElement('div');
+      card.className = 'augment';
+      const rank = document.createElement('span');
+      rank.className = 'augment-rank';
+      rank.textContent = String(index + 1);
+      rank.setAttribute('aria-label', `第 ${index + 1} 名`);
+      const icon = document.createElement('img');
+      setImage(icon, augment.iconUrl, augment.name);
+      const main = document.createElement('div');
+      main.className = 'augment-main';
+      const name = document.createElement('div');
+      name.className = 'augment-name';
+      name.textContent = augment.name;
+      const meta = document.createElement('div');
+      meta.className = 'augment-meta';
+      const games = Number.isInteger(augment.stats?.games)
+        ? `${augment.stats.games.toLocaleString('zh-CN')} 场` : '样本量未知';
+      meta.textContent = `${formatPercent(augment.stats?.winRate)} · ${games}`;
+      main.append(name, meta);
+      card.append(rank, icon, main);
+      list.append(card);
+    });
+    group.append(header, list);
+    augmentList.append(group);
   }
 }
 

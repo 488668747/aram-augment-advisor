@@ -193,6 +193,59 @@
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+        max-height: 320px;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+        padding-right: 4px;
+      }
+
+      .augment-group {
+        --rarity-color: #d8deeb;
+        margin-top: 16px;
+        padding: 16px;
+        border: 1px solid #303957;
+        border-radius: 14px;
+      }
+
+      .augment-group--prismatic {
+        --rarity-color: #d6b7ff;
+      }
+
+      .augment-group--gold {
+        --rarity-color: #edc970;
+      }
+
+      .augment-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .augment-group-header h4 {
+        margin: 0;
+        padding-left: 10px;
+        border-left: 3px solid var(--rarity-color);
+        color: var(--rarity-color);
+        font-size: 16px;
+      }
+
+      .augment-count {
+        color: #adb6ce;
+        font-size: 12px;
+      }
+
+      .augment-list:focus-visible {
+        outline: 2px solid #93a4ff;
+        outline-offset: 3px;
+      }
+
+      .augment-rank {
+        min-width: 20px;
+        color: var(--rarity-color);
+        font-size: 13px;
+        text-align: center;
       }
 
       .augment,
@@ -362,7 +415,8 @@
         </div>
 
         <h3 class="section-title">该英雄的海克斯胜率</h3>
-        <div class="augment-list" id="augment-list"></div>
+        <p class="search-hint">各类按当前英雄的海克斯胜率从高到低排列，缺少胜率的数据放在末尾。</p>
+        <div id="augment-list"></div>
 
         <h3 class="section-title">出装方案（含鞋）</h3>
         <p class="search-hint" id="build-note">优先展示六件装，按装备组合去重；尚未按已选海克斯调整。</p>
