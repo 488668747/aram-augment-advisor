@@ -1,0 +1,71 @@
+name: Windows 安装包发布
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: 构建并发布 Windows x64 测试版
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - name: 检出发布代码
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: 准备 Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: 检查版本与标签
+        shell: pwsh
+        run: |
+          $version = node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version"
+          if ($env:RELEASE_TAG -ne "v$version") { throw "发布标签必须与 package.json 版本一致" }
+      - name: 安装依赖
+        run: npm ci
+      - name: 准备离线 OCR 模型
+        run: npm run ocr:prepare
+      - name: 运行测试
+        run: npm test
+      - name: 下载本地统计数据
+        run: npm run data:sync
+      - name: 构建 Windows x64 安装包
+        run: npm run dist:win -- --publish never
+      - name: 校验安装包资源并生成 SHA-256
+        run: node scripts/verify-windows-package.mjs
+      - name: 保存构建产物
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-x64-${{ github.ref_name }}
+          path: |
+            dist/*-win-x64-setup.exe
+            dist/*-win-x64-setup.exe.sha256
+            dist/release-info.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: 发布 GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $installer = Get-ChildItem 'dist/*-win-x64-setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw "没有找到安装包" }
+          $notes = "docs/releases/$($env:RELEASE_TAG).md"
+          if (-not (Test-Path $notes)) { throw "缺少当前版本发布说明" }
+          gh release create $env:RELEASE_TAG $installer.FullName "$($installer.FullName).sha256" 'dist/release-info.json' --repo $env:GITHUB_REPOSITORY --verify-tag --title "$($env:RELEASE_TAG) Windows 测试版" --notes-file $notes --prerelease
+          if ($LASTEXITCODE -ne 0) { throw "GitHub Release 发布失败" }
