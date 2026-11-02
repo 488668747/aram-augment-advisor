@@ -1,4 +1,5 @@
 const statusElement = document.querySelector('#status');
+const lcuStatusElement = document.querySelector('#lcu-status');
 const dataVersionElement = document.querySelector('#data-version');
 const gamePatchElement = document.querySelector('#game-patch');
 const dataSourceElement = document.querySelector('#data-source');
@@ -13,6 +14,8 @@ const championPatch = document.querySelector('#champion-patch');
 const augmentList = document.querySelector('#augment-list');
 const itemList = document.querySelector('#item-list');
 const detailError = document.querySelector('#detail-error');
+let champions = [];
+let lastLcuChampionId = 0;
 
 function formatPercent(value) {
   return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : '暂无数据';
@@ -94,7 +97,7 @@ async function loadLocalData() {
   gamePatchElement.textContent = active.gamePatch;
   dataSourceElement.textContent = active.source?.region ?? '本地';
 
-  const champions = await window.aramAugmentAdvisor.data.getChampions();
+  champions = await window.aramAugmentAdvisor.data.getChampions();
   championSelect.replaceChildren();
   for (const champion of champions) {
     const option = document.createElement('option');
@@ -106,8 +109,36 @@ async function loadLocalData() {
   if (champions.length > 0) await loadChampionOverview(champions[0].id);
 }
 
+async function applyLcuSnapshot(snapshot) {
+  if (snapshot.status === 'connected' && snapshot.phase === 'ChampSelect') {
+    lcuStatusElement.textContent = '已连接，正在选人';
+    if (snapshot.championId > 0 && champions.some((champion) => champion.id === snapshot.championId)) {
+      championSelect.value = String(snapshot.championId);
+      if (lastLcuChampionId !== snapshot.championId) {
+        lastLcuChampionId = snapshot.championId;
+        await loadChampionOverview(snapshot.championId);
+      }
+    }
+    return;
+  }
+
+  if (snapshot.status === 'connected') {
+    lcuStatusElement.textContent = `已连接，当前阶段：${snapshot.phase}`;
+  } else if (snapshot.status === 'error') {
+    lcuStatusElement.textContent = '连接失败';
+  } else {
+    lcuStatusElement.textContent = '未检测到 League Client';
+  }
+}
+
 window.aramAugmentAdvisor.data.onSyncProgress(({ completed, total }) => {
   statusElement.textContent = `正在同步数据 ${completed}/${total}`;
+});
+
+window.aramAugmentAdvisor.lcu.onSnapshot((snapshot) => {
+  applyLcuSnapshot(snapshot).catch((error) => {
+    lcuStatusElement.textContent = error instanceof Error ? error.message : String(error);
+  });
 });
 
 championSelect.addEventListener('change', () => loadChampionOverview(Number(championSelect.value)));
@@ -131,6 +162,7 @@ syncButton.addEventListener('click', async () => {
 
 try {
   await loadLocalData();
+  await applyLcuSnapshot(await window.aramAugmentAdvisor.lcu.getSnapshot());
 } catch (error) {
   statusElement.textContent = '本地数据读取失败';
   statusElement.classList.add('error');

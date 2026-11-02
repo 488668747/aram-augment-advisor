@@ -7,9 +7,13 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { readActiveDataSet } from './data-store.js';
 import { readChampionList, readChampionOverview } from './data-query.js';
 import { syncGlobalData } from './data-sync.js';
+import { LcuService } from './lcu-service.js';
 
 const currentFile = fileURLToPath(import.meta.url);
 const currentDirectory = path.dirname(currentFile);
+const lcuService = new LcuService();
+let lcuPollTimer;
+let lcuPollInFlight = false;
 
 function getBundledDataRoot() {
   if (app.isPackaged) return path.join(process.resourcesPath, 'data');
@@ -83,8 +87,25 @@ ipcMain.handle('data:sync', async (event) => {
   };
 });
 
+ipcMain.handle('lcu:get-snapshot', () => lcuService.getSnapshot());
+
+async function pollLcu() {
+  if (lcuPollInFlight) return;
+  lcuPollInFlight = true;
+  try {
+    const snapshot = await lcuService.getSnapshot();
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) window.webContents.send('lcu:snapshot', snapshot);
+    }
+  } finally {
+    lcuPollInFlight = false;
+  }
+}
+
 app.whenReady().then(() => {
   createMainWindow();
+  pollLcu();
+  lcuPollTimer = setInterval(pollLcu, 1500);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
@@ -92,5 +113,6 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  clearInterval(lcuPollTimer);
   if (process.platform !== 'darwin') app.quit();
 });

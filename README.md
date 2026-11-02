@@ -53,3 +53,5 @@ npm run data:import -- /path/to/data-version
 - 已选海克斯与候选海克斯的组合推荐；
 - 游戏内只读 OCR 浮窗；
 - Windows 打包和手动数据更新。
+
+当前 LCU 接入是只读的：程序通过 League Client lockfile 连接本地 LCU，读取游戏阶段和选人 session，在检测到 `ChampSelect` 时自动选择当前英雄。它不会自动选英雄、锁定英雄、交换 bench 或写入选人操作。

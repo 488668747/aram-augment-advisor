@@ -8,4 +8,8 @@ contextBridge.exposeInMainWorld('aramAugmentAdvisor', {
     sync: () => ipcRenderer.invoke('data:sync'),
     onSyncProgress: (listener) => ipcRenderer.on('data:sync-progress', (_event, progress) => listener(progress)),
   },
+  lcu: {
+    getSnapshot: () => ipcRenderer.invoke('lcu:get-snapshot'),
+    onSnapshot: (listener) => ipcRenderer.on('lcu:snapshot', (_event, snapshot) => listener(snapshot)),
+  },
 });

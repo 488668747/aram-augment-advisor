@@ -130,3 +130,24 @@
 5. 运行目录打包并检查安装资源包含本地数据。
 6. 提交：`feat: 支持内置数据和程序内同步`
 
+### Task 8: 只读接入 LCU 当前英雄
+
+**Files:**
+- Create: `src/main/lcu-client.js`
+- Create: `src/main/lcu-discovery.js`
+- Create: `src/main/lcu-service.js`
+- Create: `tests/lcu.test.js`
+- Modify: `src/main/main.js`
+- Modify: `src/preload/preload.cjs`
+- Modify: `src/renderer/index.html`
+- Modify: `src/renderer/renderer.js`
+
+**Steps:**
+
+1. 测试 lockfile 解析、LCU 请求路径和选人 session 的英雄映射。
+2. 实现 Windows 常见路径、进程命令行和环境变量的 lockfile 发现。
+3. 实现本地 LCU HTTPS 只读客户端和稳定快照服务。
+4. 在主进程轮询选人状态，并把当前英雄同步到 renderer。
+5. 验证无 League Client 时应用仍能正常运行。
+6. 提交：`feat: 只读接入 LCU 当前英雄`
+
