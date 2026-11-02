@@ -15,6 +15,7 @@ const championWinRate = document.querySelector('#champion-win-rate');
 const championPatch = document.querySelector('#champion-patch');
 const augmentList = document.querySelector('#augment-list');
 const itemList = document.querySelector('#item-list');
+const buildNote = document.querySelector('#build-note');
 const detailError = document.querySelector('#detail-error');
 let champions = [];
 let lastLcuChampionId = 0;
@@ -104,22 +105,27 @@ function renderBuildRoutes(routes) {
   itemList.replaceChildren();
   if (routes.length === 0) {
     const empty = document.createElement('p');
-    empty.textContent = '当前英雄暂无核心出装数据';
+    empty.textContent = '当前英雄暂无出装组合数据';
+    buildNote.textContent = '当前数据没有可用的出装组合，请稍后手动同步数据。';
     itemList.append(empty);
     return;
   }
+  const itemCount = routes[0].items.length;
+  const coverage = itemCount === 6 ? '六件成装' : itemCount === 5 ? '五件阶段（暂无六件统计）'
+    : `仅有最多 ${itemCount} 件的组合，暂无五六件统计`;
+  buildNote.textContent = `${coverage}；同装备组合只展示一次，按样本量排序。胜率为对应装备样本的胜场 ÷ 场次，不能与英雄整体胜率直接比较；尚未按已选海克斯调整。`;
   routes.forEach((route, index) => {
     const section = document.createElement('section');
     section.className = 'build-route';
     const header = document.createElement('div');
     header.className = 'build-route-header';
     const title = document.createElement('h4');
-    title.textContent = `方案 ${index + 1}`;
+    title.textContent = `方案 ${index + 1} · ${route.items.length} 件`;
     const stats = document.createElement('span');
     stats.className = 'build-route-stats';
     const games = Number.isInteger(route.games) ? `${route.games.toLocaleString('zh-CN')} 场` : '样本量未知';
     const pickRate = typeof route.pickRate === 'number' ? ` · 选取率 ${formatPercent(route.pickRate)}` : '';
-    stats.textContent = `组合胜率 ${formatPercent(route.winRate)} · ${games}${pickRate}`;
+    stats.textContent = `${route.items.length} 件样本胜率 ${formatPercent(route.winRate)} · ${games}${pickRate}`;
     header.append(title, stats);
     const items = document.createElement('div');
     items.className = 'item-list';

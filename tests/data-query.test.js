@@ -47,5 +47,95 @@ test('共享核心装备的多套出装保持独立组合及各自统计', () =>
     coreItems.map(route => route.itemIds));
   assert.deepEqual(overview.build.recommendedRoutes.map(({ games, wins, winRate, pickRate }) =>
     ({ games, wins, winRate, pickRate })),
-  coreItems.map(({ games, wins, winRate, pickRate }) => ({ games, wins, winRate, pickRate })));
+  coreItems.map(({ games, wins, pickRate }) => ({ games, wins, winRate: wins / games, pickRate })));
+});
+
+const buildItems = [3118, 3020, 6653, 3089, 3135, 4645, 3165, 2503]
+  .map(id => ({ id, name: String(id) }));
+
+function queryBuild(build) {
+  return createChampionOverview({ champion: { id: 17 }, details: { build }, items: buildItems })
+    .build.recommendedRoutes;
+}
+
+test('同装备不同排列只保留最大样本记录，不累计样本或胜率', () => {
+  const routes = queryBuild({ coreItems: [
+    { itemIds: [3118, 3020, 6653], games: 7735, wins: 3799 },
+    { itemIds: [3118, 6653, 3020], games: 3652, wins: 1889 },
+    { itemIds: [6653, 3020, 3118], games: 3355, wins: 1716 },
+  ] });
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0].games, 7735);
+  assert.equal(routes[0].winRate, 3799 / 7735);
+});
+
+test('用匹配核心的六件装扩展统计，不能沿用三件套胜率', () => {
+  const routes = queryBuild({
+    coreItems: [{ itemIds: [3118, 3020, 6653], games: 7735, wins: 3799 }],
+    itemExtensions: [
+      { coreItemIds: [3020, 3118, 6653], step: 2, itemIds: [3089, 4645], games: 1141, wins: 593 },
+      { coreItemIds: [3020, 3118, 6653], step: 3, itemIds: [3089, 3135, 4645], games: 395, wins: 222 },
+      { coreItemIds: [3020, 3118, 6653], step: 3, itemIds: [3089, 3165, 4645], games: 325, wins: 155 },
+    ],
+  });
+  assert.equal(routes.length, 2);
+  assert.equal(routes[0].items.length, 6);
+  assert.equal(routes[0].games, 395);
+  assert.equal(routes[0].winRate, 222 / 395);
+  assert.equal(routes[0].kind, 'extended');
+  assert.equal(routes[0].pickRate, null);
+});
+
+test('同一六件组合来自不同核心拆分时去重，使用最大样本记录', () => {
+  const itemIds = [3118, 3020, 6653, 3089, 3135, 4645];
+  const routes = queryBuild({
+    coreItems: [
+      { itemIds: [3118, 3020, 6653], games: 1000, wins: 500 },
+      { itemIds: [3020, 3118, 4645], games: 500, wins: 300 },
+    ],
+    fullItems: [{ itemIds: [...itemIds].reverse(), games: 700, wins: 400 }],
+    itemExtensions: [
+      { coreItemIds: [3020, 3118, 6653], step: 3, itemIds: [3089, 3135, 4645], games: 395, wins: 222 },
+      { coreItemIds: [3020, 3118, 4645], step: 3, itemIds: [3089, 3135, 6653], games: 100, wins: 50 },
+    ],
+  });
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0].games, 700);
+  assert.equal(routes[0].kind, 'full');
+  assert.equal(routes[0].winRate, 400 / 700);
+});
+
+test('没有六件装时保留五件装，用胜负数而非上游不一致的比例计算胜率', () => {
+  const routes = queryBuild({
+    coreItems: [{ itemIds: [3118, 3020, 6653] }],
+    itemExtensions: [{ coreItemIds: [3020, 3118, 6653], step: 2, itemIds: [3089, 4645], games: 100, wins: 60, winRate: 0.1 }],
+  });
+  assert.equal(routes[0].items.length, 5);
+  assert.equal(routes[0].winRate, 0.6);
+});
+
+test('不把七件套截断为六件套，不接受重复装备或缺失装备的组合', () => {
+  const routes = queryBuild({
+    coreItems: [{ itemIds: [3118, 3020, 6653], games: 100, wins: 50 }],
+    itemExtensions: [
+      { coreItemIds: [3020, 3118, 6653], step: 4, itemIds: [3089, 3135, 3165, 4645], games: 80, wins: 40 },
+      { coreItemIds: [3020, 3118, 6653], step: 3, itemIds: [3089, 4645, 9999], games: 80, wins: 40 },
+      { coreItemIds: [3020, 3118, 6653], step: 3, itemIds: [3089, 4645, 3020], games: 80, wins: 40 },
+    ],
+  });
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0].kind, 'core');
+  assert.equal(routes[0].items.length, 3);
+  assert.equal(routes[0].games, 100);
+});
+
+test('不拼接其他核心的扩展或用单件胜率填出完整出装', () => {
+  const routes = queryBuild({
+    coreItems: [{ itemIds: [3118, 3020, 6653] }],
+    itemExtensions: [{ coreItemIds: [3020, 3118, 4645], step: 3, itemIds: [3089, 3135, 3165], games: 100, wins: 60 }],
+    situationalItems: [{ id: 3089, games: 100, wins: 80 }],
+  });
+  assert.equal(routes[0].items.length, 3);
+  assert.equal(routes[0].kind, 'core');
+  assert.equal(routes[0].winRate, null);
 });
