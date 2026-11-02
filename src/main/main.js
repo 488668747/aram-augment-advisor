@@ -6,16 +6,27 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 
 import { readActiveDataSet } from './data-store.js';
 import { readChampionList, readChampionOverview } from './data-query.js';
+import { syncGlobalData } from './data-sync.js';
 
 const currentFile = fileURLToPath(import.meta.url);
 const currentDirectory = path.dirname(currentFile);
 
+function getBundledDataRoot() {
+  if (app.isPackaged) return path.join(process.resourcesPath, 'data');
+  return path.resolve(currentDirectory, '../../data');
+}
+
+function getUserDataRoot() {
+  return path.join(app.getPath('userData'), 'data', 'runtime');
+}
+
 function getDataRoot() {
-  const dataDirectory = path.resolve(currentDirectory, '../../data');
-  const runtimeDirectory = path.join(dataDirectory, 'runtime');
-  return existsSync(path.join(runtimeDirectory, 'current.json'))
-    ? runtimeDirectory
-    : dataDirectory;
+  const bundledRoot = getBundledDataRoot();
+  const bundledRuntimeRoot = path.join(bundledRoot, 'runtime');
+  const userRoot = getUserDataRoot();
+  if (existsSync(path.join(userRoot, 'current.json'))) return userRoot;
+  if (existsSync(path.join(bundledRuntimeRoot, 'current.json'))) return bundledRuntimeRoot;
+  return bundledRoot;
 }
 
 function createMainWindow() {
@@ -55,6 +66,21 @@ ipcMain.handle('data:get-champion-overview', async (_event, championId) => {
   }
 
   return readChampionOverview(getDataRoot(), championId);
+});
+
+ipcMain.handle('data:sync', async (event) => {
+  const result = await syncGlobalData({
+    apiOrigin: 'https://data.dtodo.cn',
+    dataRoot: getUserDataRoot(),
+    onProgress: (progress) => {
+      event.sender.send('data:sync-progress', progress);
+    },
+  });
+
+  return {
+    dataVersion: result.dataVersion,
+    fileCount: result.fileCount,
+  };
 });
 
 app.whenReady().then(() => {

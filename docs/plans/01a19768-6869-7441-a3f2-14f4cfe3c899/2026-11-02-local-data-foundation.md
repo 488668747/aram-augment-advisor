@@ -110,3 +110,23 @@
 4. 用内置示例数据、同步后的全球数据和 Electron 启动命令分别验证。
 5. 提交：`feat: 增加离线英雄详情展示`
 
+### Task 7: 打包内置数据并支持程序内手动同步
+
+**Files:**
+- Create: `src/main/data-sync.js`
+- Modify: `src/main/main.js`
+- Modify: `src/preload/preload.cjs`
+- Modify: `src/renderer/index.html`
+- Modify: `src/renderer/renderer.js`
+- Modify: `package.json`
+- Modify: `.gitignore`
+
+**Steps:**
+
+1. 把命令行同步逻辑提取为主进程可调用的数据同步服务。
+2. 增加用户目录缓存和安装包内置数据的优先级。
+3. 在窗口中增加手动同步按钮和同步进度。
+4. 配置 electron-builder，把本地数据作为 extraResources 打包。
+5. 运行目录打包并检查安装资源包含本地数据。
+6. 提交：`feat: 支持内置数据和程序内同步`
+

@@ -72,6 +72,22 @@
         font: inherit;
       }
 
+      button {
+        padding: 12px 16px;
+        border: 1px solid #6977d7;
+        border-radius: 10px;
+        color: #f3f5fb;
+        background: #4c5dcc;
+        cursor: pointer;
+        font: inherit;
+        white-space: nowrap;
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.6;
+      }
+
       .section-title {
         margin: 28px 0 12px;
         color: #dce2f5;
@@ -226,6 +242,10 @@
         <div class="status">
           <span class="label">数据来源</span>
           <span class="value" id="data-source">—</span>
+        </div>
+        <div class="status">
+          <span class="label">数据更新</span>
+          <button id="sync-button" type="button">手动同步全球数据</button>
         </div>
       </section>
 

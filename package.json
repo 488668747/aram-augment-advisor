@@ -1,6 +1,8 @@
 {
   "name": "aram-augment-advisor",
   "version": "0.1.0",
+  "description": "海克斯大乱斗强化符文助手",
+  "author": "488668747",
   "private": true,
   "type": "module",
   "main": "src/main/main.js",
@@ -8,9 +10,35 @@
     "test": "node --test",
     "data:import": "node scripts/import-data.mjs",
     "data:sync": "node scripts/sync-global-data.mjs",
-    "start": "electron ."
+    "start": "electron .",
+    "dist:dir": "electron-builder --dir",
+    "dist:win": "electron-builder --win nsis"
   },
   "devDependencies": {
-    "electron": "^39.0.0"
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.aramaugmentadvisor.desktop",
+    "productName": "海克斯大乱斗助手",
+    "asar": true,
+    "extraResources": [
+      {
+        "from": "data/runtime",
+        "to": "data/runtime"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

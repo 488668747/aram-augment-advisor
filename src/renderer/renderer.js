@@ -2,6 +2,7 @@ const statusElement = document.querySelector('#status');
 const dataVersionElement = document.querySelector('#data-version');
 const gamePatchElement = document.querySelector('#game-patch');
 const dataSourceElement = document.querySelector('#data-source');
+const syncButton = document.querySelector('#sync-button');
 const championSelect = document.querySelector('#champion-select');
 const championCard = document.querySelector('#champion-card');
 const championIcon = document.querySelector('#champion-icon');
@@ -86,7 +87,7 @@ async function loadChampionOverview(championId) {
   }
 }
 
-try {
+async function loadLocalData() {
   const active = await window.aramAugmentAdvisor.data.getActive();
   statusElement.textContent = '本地数据已加载';
   dataVersionElement.textContent = active.dataVersion;
@@ -102,8 +103,34 @@ try {
     championSelect.append(option);
   }
   championSelect.disabled = false;
-  championSelect.addEventListener('change', () => loadChampionOverview(Number(championSelect.value)));
   if (champions.length > 0) await loadChampionOverview(champions[0].id);
+}
+
+window.aramAugmentAdvisor.data.onSyncProgress(({ completed, total }) => {
+  statusElement.textContent = `正在同步数据 ${completed}/${total}`;
+});
+
+championSelect.addEventListener('change', () => loadChampionOverview(Number(championSelect.value)));
+
+syncButton.addEventListener('click', async () => {
+  syncButton.disabled = true;
+  detailError.hidden = true;
+  statusElement.textContent = '正在准备同步…';
+  try {
+    await window.aramAugmentAdvisor.data.sync();
+    await loadLocalData();
+    statusElement.textContent = '数据同步完成';
+  } catch (error) {
+    statusElement.textContent = '数据同步失败';
+    detailError.hidden = false;
+    detailError.textContent = error instanceof Error ? error.message : String(error);
+  } finally {
+    syncButton.disabled = false;
+  }
+});
+
+try {
+  await loadLocalData();
 } catch (error) {
   statusElement.textContent = '本地数据读取失败';
   statusElement.classList.add('error');
