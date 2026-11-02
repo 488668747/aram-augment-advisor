@@ -5,6 +5,8 @@ const gamePatchElement = document.querySelector('#game-patch');
 const dataSourceElement = document.querySelector('#data-source');
 const syncButton = document.querySelector('#sync-button');
 const championSelect = document.querySelector('#champion-select');
+const championSearch = document.querySelector('#champion-search');
+const championSearchHint = document.querySelector('#champion-search-hint');
 const championCard = document.querySelector('#champion-card');
 const championIcon = document.querySelector('#champion-icon');
 const championName = document.querySelector('#champion-name');
@@ -16,6 +18,37 @@ const itemList = document.querySelector('#item-list');
 const detailError = document.querySelector('#detail-error');
 let champions = [];
 let lastLcuChampionId = 0;
+let selectedChampionId = 0;
+let overviewRequestId = 0;
+
+function renderChampionOptions() {
+  const query = championSearch.value.trim().normalize('NFKC').toLowerCase();
+  const matches = champions.filter((champion) =>
+    [champion.name, champion.title, champion.alias].some((value) =>
+      String(value ?? '').normalize('NFKC').toLowerCase().includes(query)));
+
+  championSelect.replaceChildren();
+  for (const champion of matches) {
+    const option = document.createElement('option');
+    option.value = String(champion.id);
+    option.textContent = `${champion.name} · ${champion.title ?? champion.alias ?? ''}`;
+    championSelect.append(option);
+  }
+  if (!matches.some((champion) => champion.id === selectedChampionId)) {
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = matches.length > 0 ? '请选择搜索结果' : '没有匹配的英雄';
+    placeholder.disabled = true;
+    championSelect.prepend(placeholder);
+    championSelect.value = '';
+  } else {
+    championSelect.value = String(selectedChampionId);
+  }
+  championSelect.disabled = matches.length === 0;
+  championSearchHint.textContent = query
+    ? (matches.length ? `找到 ${matches.length} 位英雄，选择下拉结果或按回车确认` : '没有匹配的英雄，请换个关键词')
+    : `共 ${champions.length} 位英雄`;
+}
 
 function formatPercent(value) {
   return typeof value === 'number' ? `${(value * 100).toFixed(1)}%` : '暂无数据';
@@ -72,9 +105,11 @@ function renderItems(items) {
 }
 
 async function loadChampionOverview(championId) {
+  const requestId = ++overviewRequestId;
   detailError.hidden = true;
   try {
     const overview = await window.aramAugmentAdvisor.data.getChampionOverview(championId);
+    if (requestId !== overviewRequestId) return;
     championCard.hidden = false;
     setImage(championIcon, overview.champion?.iconUrl, overview.champion?.name ?? '英雄');
     championName.textContent = overview.champion?.name ?? '未知英雄';
@@ -84,6 +119,7 @@ async function loadChampionOverview(championId) {
     renderAugments(overview.augments ?? []);
     renderItems(overview.build?.recommendedItems ?? []);
   } catch (error) {
+    if (requestId !== overviewRequestId) return;
     championCard.hidden = true;
     detailError.hidden = false;
     detailError.textContent = error instanceof Error ? error.message : String(error);
@@ -98,30 +134,30 @@ async function loadLocalData() {
   dataSourceElement.textContent = active.source?.region ?? '本地';
 
   champions = await window.aramAugmentAdvisor.data.getChampions();
-  championSelect.replaceChildren();
-  for (const champion of champions) {
-    const option = document.createElement('option');
-    option.value = String(champion.id);
-    option.textContent = champion.name;
-    championSelect.append(option);
+  if (!champions.some((champion) => champion.id === selectedChampionId)) {
+    selectedChampionId = champions[0]?.id ?? 0;
   }
-  championSelect.disabled = false;
-  if (champions.length > 0) await loadChampionOverview(champions[0].id);
+  championSearch.disabled = champions.length === 0;
+  renderChampionOptions();
+  if (selectedChampionId) await loadChampionOverview(selectedChampionId);
 }
 
 async function applyLcuSnapshot(snapshot) {
   if (snapshot.status === 'connected' && snapshot.phase === 'ChampSelect') {
     lcuStatusElement.textContent = '已连接，正在选人';
     if (snapshot.championId > 0 && champions.some((champion) => champion.id === snapshot.championId)) {
-      championSelect.value = String(snapshot.championId);
       if (lastLcuChampionId !== snapshot.championId) {
         lastLcuChampionId = snapshot.championId;
+        selectedChampionId = snapshot.championId;
+        championSearch.value = '';
+        renderChampionOptions();
         await loadChampionOverview(snapshot.championId);
       }
     }
     return;
   }
 
+  lastLcuChampionId = 0;
   if (snapshot.status === 'connected') {
     lcuStatusElement.textContent = `已连接，当前阶段：${snapshot.phase}`;
   } else if (snapshot.status === 'error') {
@@ -141,7 +177,19 @@ window.aramAugmentAdvisor.lcu.onSnapshot((snapshot) => {
   });
 });
 
-championSelect.addEventListener('change', () => loadChampionOverview(Number(championSelect.value)));
+championSearch.addEventListener('input', renderChampionOptions);
+championSearch.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter' || event.isComposing || championSelect.disabled) return;
+  const firstMatch = [...championSelect.options].find((option) => !option.disabled);
+  if (firstMatch) {
+    championSelect.value = firstMatch.value;
+    championSelect.dispatchEvent(new Event('change'));
+  }
+});
+championSelect.addEventListener('change', () => {
+  selectedChampionId = Number(championSelect.value);
+  if (selectedChampionId > 0) loadChampionOverview(selectedChampionId);
+});
 
 syncButton.addEventListener('click', async () => {
   syncButton.disabled = true;

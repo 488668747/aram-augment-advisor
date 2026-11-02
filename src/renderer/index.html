@@ -62,14 +62,63 @@
         margin-top: 28px;
       }
 
-      select {
+      .champion-picker {
         flex: 1;
+        min-width: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .select-wrap {
+        position: relative;
+      }
+
+      .select-wrap::after {
+        content: "";
+        position: absolute;
+        right: 18px;
+        top: 50%;
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid #adb6ce;
+        border-bottom: 2px solid #adb6ce;
+        transform: translateY(-70%) rotate(45deg);
+        pointer-events: none;
+      }
+
+      select,
+      input[type="search"] {
+        box-sizing: border-box;
+        width: 100%;
+        min-height: 44px;
         padding: 12px 14px;
         border: 1px solid #3b466a;
         border-radius: 10px;
         color: #f3f5fb;
         background: #171d31;
         font: inherit;
+      }
+
+      select {
+        appearance: none;
+        padding-right: 48px;
+        cursor: pointer;
+      }
+
+      input[type="search"]::placeholder {
+        color: #8994b1;
+      }
+
+      select:focus-visible,
+      input[type="search"]:focus-visible {
+        outline: 2px solid #93a4ff;
+        outline-offset: 2px;
+      }
+
+      .search-hint {
+        margin: 0;
+        color: #adb6ce;
+        font-size: 13px;
       }
 
       button {
@@ -255,9 +304,16 @@
 
       <div class="toolbar">
         <label for="champion-select">当前英雄</label>
-        <select id="champion-select" disabled>
-          <option>正在读取英雄数据…</option>
-        </select>
+        <div class="champion-picker">
+          <input id="champion-search" type="search" aria-label="搜索英雄" aria-controls="champion-select"
+            aria-describedby="champion-search-hint" placeholder="搜索英雄名字、称号或英文名" autocomplete="off" disabled />
+          <div class="select-wrap">
+            <select id="champion-select" disabled>
+              <option>正在读取英雄数据…</option>
+            </select>
+          </div>
+          <p id="champion-search-hint" class="search-hint" role="status"></p>
+        </div>
       </div>
 
       <section class="card" id="champion-card" hidden>
