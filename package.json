@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "data:import": "node scripts/import-data.mjs"
   }
 }

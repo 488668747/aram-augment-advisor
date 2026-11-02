@@ -1,4 +1,13 @@
-import { readFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+  cp,
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -23,6 +32,70 @@ async function readJson(filePath) {
   }
 }
 
+function validateRelativeFilePath(filePath) {
+  if (
+    typeof filePath !== 'string'
+    || filePath.length === 0
+    || path.isAbsolute(filePath)
+    || filePath.includes('\0')
+    || filePath.split(/[\\/]/).some((segment) => segment === '' || segment === '.' || segment === '..')
+  ) {
+    throw new DataValidationError(`manifest 包含不安全的文件路径：${String(filePath)}`);
+  }
+
+  return filePath;
+}
+
+async function sha256File(filePath) {
+  const content = await readFile(filePath);
+  return createHash('sha256').update(content).digest('hex');
+}
+
+async function validateVersionDirectory(versionDirectory, { requireFileHashes = false } = {}) {
+  const manifest = validateManifest(await readJson(path.join(versionDirectory, 'manifest.json')));
+
+  if (!Array.isArray(manifest.files)) {
+    throw new DataValidationError('manifest 缺少 files 文件清单');
+  }
+
+  for (const file of manifest.files) {
+    if (!file || typeof file !== 'object') {
+      throw new DataValidationError('manifest.files 包含无效条目');
+    }
+
+    const relativePath = validateRelativeFilePath(file.path);
+    const absolutePath = path.resolve(versionDirectory, relativePath);
+    const versionRoot = `${path.resolve(versionDirectory)}${path.sep}`;
+
+    if (!absolutePath.startsWith(versionRoot)) {
+      throw new DataValidationError(`manifest 文件超出版本目录：${relativePath}`);
+    }
+
+    try {
+      const fileStat = await stat(absolutePath);
+      if (!fileStat.isFile()) {
+        throw new DataValidationError(`manifest 文件不是普通文件：${relativePath}`);
+      }
+    } catch (error) {
+      if (error instanceof DataValidationError) throw error;
+      throw new DataValidationError(`manifest 文件不存在：${relativePath}`);
+    }
+
+    if (requireFileHashes || file.sha256 !== undefined) {
+      if (typeof file.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.sha256)) {
+        throw new DataValidationError(`manifest 缺少有效的 SHA-256：${relativePath}`);
+      }
+
+      const actualHash = await sha256File(absolutePath);
+      if (actualHash !== file.sha256) {
+        throw new DataValidationError(`文件校验失败：${relativePath}`);
+      }
+    }
+  }
+
+  return manifest;
+}
+
 export async function readActiveDataSet(dataRoot) {
   const root = path.resolve(dataRoot);
   const pointerPath = path.join(root, 'current.json');
@@ -43,4 +116,46 @@ export async function readActiveDataSet(dataRoot) {
     manifest,
     versionDirectory,
   };
+}
+
+export async function importDataVersion({ sourceDirectory, dataRoot }) {
+  const source = path.resolve(sourceDirectory);
+  const root = path.resolve(dataRoot);
+  const sourceManifest = await validateVersionDirectory(source, { requireFileHashes: true });
+  const versionsDirectory = path.join(root, 'versions');
+  const targetDirectory = path.join(versionsDirectory, sourceManifest.dataVersion);
+  const temporaryDirectory = path.join(versionsDirectory, `.import-${randomUUID()}`);
+
+  await mkdir(versionsDirectory, { recursive: true });
+
+  try {
+    await cp(source, temporaryDirectory, { recursive: true, errorOnExist: true });
+    const manifest = await validateVersionDirectory(temporaryDirectory, { requireFileHashes: true });
+
+    try {
+      await stat(targetDirectory);
+      throw new DataValidationError(`数据版本已存在：${manifest.dataVersion}`);
+    } catch (error) {
+      if (!(error instanceof Error) || error.code !== 'ENOENT') {
+        if (error instanceof DataValidationError) throw error;
+        throw error;
+      }
+    }
+
+    await rename(temporaryDirectory, targetDirectory);
+
+    const pointerPath = path.join(root, 'current.json');
+    const temporaryPointerPath = path.join(root, `.current-${randomUUID()}.json`);
+    await writeFile(temporaryPointerPath, `${JSON.stringify({ dataVersion: manifest.dataVersion }, null, 2)}\n`);
+    await rename(temporaryPointerPath, pointerPath);
+
+    return {
+      dataVersion: manifest.dataVersion,
+      manifest,
+      versionDirectory: targetDirectory,
+    };
+  } catch (error) {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+    throw error;
+  }
 }

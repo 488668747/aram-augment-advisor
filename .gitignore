@@ -1,0 +1,7 @@
+node_modules/
+.DS_Store
+
+# Runtime downloads and temporary imports
+data/runtime/
+data/versions/.import-*
+.current-*.json

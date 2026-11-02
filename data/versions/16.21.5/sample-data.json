@@ -1,0 +1,44 @@
+{
+  "dataVersion": "16.21.5",
+  "gamePatch": "16.21",
+  "locale": "zh-CN",
+  "isSample": true,
+  "champions": [
+    {
+      "id": 1,
+      "name": "安妮",
+      "stats": {
+        "games": 100,
+        "wins": 52,
+        "winRate": 0.52
+      }
+    }
+  ],
+  "augments": [
+    {
+      "id": 1030,
+      "name": "尤里卡",
+      "rarity": "prismatic",
+      "stats": {
+        "games": 1000,
+        "wins": 540,
+        "winRate": 0.54
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": 3089,
+      "name": "灭世者的死亡之帽"
+    }
+  ],
+  "championAugments": [
+    {
+      "championId": 1,
+      "augmentId": 1030,
+      "games": 100,
+      "wins": 58,
+      "winRate": 0.58
+    }
+  ]
+}
