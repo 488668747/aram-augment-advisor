@@ -5,6 +5,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractFile } from '@electron/asar';
 
+// GitHub 的公开检查注释保留具体失败原因，不依赖登录后才能读取的原始日志。
+process.on('uncaughtExceptionMonitor', error => {
+  if (process.env.GITHUB_ACTIONS !== 'true') return;
+  const details = String(error.stack ?? error).slice(0, 2500)
+    .replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+  console.error(`::error title=Windows 安装包校验失败::${details}`);
+});
+
+const normalizeText = buffer => buffer.toString('utf8').replace(/\r\n/g, '\n');
+
 const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(project, 'dist');
 const resources = path.join(dist, 'win-unpacked', 'resources');
@@ -17,7 +27,7 @@ if (process.env.RELEASE_TAG) assert.equal(process.env.RELEASE_TAG, `v${version}`
 for (const filename of ['src/main/main.js', 'src/main/lcu-service.js', 'src/main/overlay-manager.js',
   'src/main/overlay-controller.js', 'src/main/ocr-engine.js', 'src/preload/preload.cjs',
   'src/renderer/overlay.js', 'src/renderer/renderer.js']) {
-  assert.deepEqual(extractFile(archive, filename), await readFile(path.join(project, filename)), filename);
+  assert.equal(normalizeText(extractFile(archive, filename)), normalizeText(await readFile(path.join(project, filename))), filename);
 }
 const executable = await readFile(path.join(dist, 'win-unpacked', '海克斯大乱斗助手.exe'));
 assert.equal(executable.readUInt16LE(executable.readUInt32LE(0x3c) + 4), 0x8664, '程序必须是 x64');
@@ -28,7 +38,7 @@ for (const model of models) {
   assert.equal(digest(data), model.sha256, `OCR 模型损坏：${model.language}`);
 }
 for (const filename of ['worker.cjs', 'tesseract-worker.cjs', 'image-variants.cjs']) {
-  assert.deepEqual(await readFile(path.join(resources, 'ocr', filename)), await readFile(path.join(project, 'resources', 'ocr', filename)));
+  assert.equal(normalizeText(await readFile(path.join(resources, 'ocr', filename))), normalizeText(await readFile(path.join(project, 'resources', 'ocr', filename))), filename);
 }
 for (const filename of ['tesseract.js/src/worker-script/node/index.js', 'tesseract.js-core/tesseract-core-lstm.wasm',
   'tesseract.js-core/tesseract-core-simd-lstm.wasm']) {
