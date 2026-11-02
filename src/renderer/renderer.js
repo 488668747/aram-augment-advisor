@@ -83,9 +83,8 @@ function renderAugments(augments) {
   }
 }
 
-function renderItems(items) {
-  itemList.replaceChildren();
-  for (const item of items.slice(0, 9)) {
+function renderItems(items, container) {
+  for (const item of items) {
     const card = document.createElement('div');
     card.className = 'item';
     const icon = document.createElement('img');
@@ -95,13 +94,39 @@ function renderItems(items) {
     const name = document.createElement('div');
     name.className = 'item-name';
     name.textContent = item.name;
-    const meta = document.createElement('div');
-    meta.className = 'item-meta';
-    meta.textContent = '推荐核心装备';
-    main.append(name, meta);
+    main.append(name);
     card.append(icon, main);
-    itemList.append(card);
+    container.append(card);
   }
+}
+
+function renderBuildRoutes(routes) {
+  itemList.replaceChildren();
+  if (routes.length === 0) {
+    const empty = document.createElement('p');
+    empty.textContent = '当前英雄暂无核心出装数据';
+    itemList.append(empty);
+    return;
+  }
+  routes.forEach((route, index) => {
+    const section = document.createElement('section');
+    section.className = 'build-route';
+    const header = document.createElement('div');
+    header.className = 'build-route-header';
+    const title = document.createElement('h4');
+    title.textContent = `方案 ${index + 1}`;
+    const stats = document.createElement('span');
+    stats.className = 'build-route-stats';
+    const games = Number.isInteger(route.games) ? `${route.games.toLocaleString('zh-CN')} 场` : '样本量未知';
+    const pickRate = typeof route.pickRate === 'number' ? ` · 选取率 ${formatPercent(route.pickRate)}` : '';
+    stats.textContent = `组合胜率 ${formatPercent(route.winRate)} · ${games}${pickRate}`;
+    header.append(title, stats);
+    const items = document.createElement('div');
+    items.className = 'item-list';
+    renderItems(route.items, items);
+    section.append(header, items);
+    itemList.append(section);
+  });
 }
 
 async function loadChampionOverview(championId) {
@@ -117,7 +142,7 @@ async function loadChampionOverview(championId) {
     championWinRate.textContent = formatPercent(overview.champion?.stats?.winRate);
     championPatch.textContent = overview.gamePatch;
     renderAugments(overview.augments ?? []);
-    renderItems(overview.build?.recommendedItems ?? []);
+    renderBuildRoutes(overview.build?.recommendedRoutes ?? []);
   } catch (error) {
     if (requestId !== overviewRequestId) return;
     championCard.hidden = true;

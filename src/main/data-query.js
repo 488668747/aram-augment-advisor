@@ -10,10 +10,10 @@ export function createChampionOverview({ champion, details, items }) {
   const itemMap = new Map(items.map((item) => [item.id, item]));
   const build = details.build ?? details.builds?.[0] ?? null;
   const coreItems = build?.coreItems ?? [];
-  const recommendedItems = coreItems
-    .flatMap((route) => route.itemIds ?? [])
-    .map((itemId) => itemMap.get(itemId))
-    .filter(Boolean);
+  const recommendedRoutes = coreItems.map((route) => ({
+    ...route,
+    items: (route.itemIds ?? []).map((itemId) => itemMap.get(itemId)).filter(Boolean),
+  })).filter((route) => route.items.length > 0);
 
   return {
     champion: details.champion ?? champion,
@@ -21,7 +21,7 @@ export function createChampionOverview({ champion, details, items }) {
     build: build
       ? {
         ...build,
-        recommendedItems,
+        recommendedRoutes,
       }
       : null,
   };
