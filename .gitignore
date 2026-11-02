@@ -6,3 +6,6 @@ dist/
 data/runtime/
 data/versions/.import-*
 .current-*.json
+
+# Reproducible OCR models: npm ci && npm run ocr:prepare
+resources/ocr/tessdata/

@@ -8,12 +8,15 @@ import { readActiveDataSet } from './data-store.js';
 import { readChampionList, readChampionOverview } from './data-query.js';
 import { syncGlobalData } from './data-sync.js';
 import { LcuService } from './lcu-service.js';
+import { createOverlayManager } from './overlay-manager.js';
 
 const currentFile = fileURLToPath(import.meta.url);
 const currentDirectory = path.dirname(currentFile);
 const lcuService = new LcuService();
 let lcuPollTimer;
 let lcuPollInFlight = false;
+let mainWindow;
+let overlayManager;
 
 function getBundledDataRoot() {
   if (app.isPackaged) return path.join(process.resourcesPath, 'data');
@@ -47,8 +50,11 @@ function createMainWindow() {
       preload: path.join(currentDirectory, '../preload/preload.cjs'),
     },
   });
-
-  window.loadFile(path.resolve(currentDirectory, '../renderer/index.html'));
+  mainWindow = window;
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  window.webContents.on('will-navigate', event => event.preventDefault());
+  window.on('closed', () => { mainWindow = null; app.quit(); });
+  return window;
 }
 
 ipcMain.handle('data:get-active', async () => {
@@ -81,6 +87,8 @@ ipcMain.handle('data:sync', async (event) => {
     },
   });
 
+  overlayManager?.invalidateData();
+
   return {
     dataVersion: result.dataVersion,
     fileCount: result.fileCount,
@@ -94,6 +102,7 @@ async function pollLcu() {
   lcuPollInFlight = true;
   try {
     const snapshot = await lcuService.getSnapshot();
+    overlayManager?.updateSession(snapshot);
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) window.webContents.send('lcu:snapshot', snapshot);
     }
@@ -102,14 +111,21 @@ async function pollLcu() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   createMainWindow();
+  overlayManager = await createOverlayManager({ getMainWindow: () => mainWindow, getDataRoot });
+  await mainWindow.loadFile(path.resolve(currentDirectory, '../renderer/index.html'));
   pollLcu();
   lcuPollTimer = setInterval(pollLcu, 1500);
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
+    if (!mainWindow) createMainWindow();
   });
+});
+
+app.on('before-quit', () => {
+  clearInterval(lcuPollTimer);
+  void overlayManager?.dispose();
 });
 
 app.on('window-all-closed', () => {

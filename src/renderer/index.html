@@ -346,6 +346,73 @@
       .error {
         color: #ff9eaa;
       }
+
+      button:focus-visible, input:focus-visible, .calibration-preview:focus-visible {
+        outline: 2px solid #93a4ff;
+        outline-offset: 3px;
+      }
+
+      button:hover:not(:disabled) { background: #5c6ddd; }
+      button:disabled { cursor: not-allowed; }
+      .secondary { background: #202941; border-color: #475479; }
+      .ocr-heading { margin: 0; font-size: 20px; }
+      .ocr-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
+      .ocr-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+      .ocr-toggle input { width: 18px; height: 18px; accent-color: #93a4ff; }
+      .ocr-display { display: grid; gap: 8px; flex: 1 1 240px; }
+      .ocr-state { margin: 16px 0 4px; overflow-wrap: anywhere; }
+      .ocr-feedback:empty { display: none; }
+      dialog {
+        box-sizing: border-box;
+        width: min(1100px, calc(100vw - 32px));
+        max-height: calc(100vh - 32px);
+        padding: 24px;
+        border: 1px solid #475479;
+        border-radius: 16px;
+        background: #131827;
+        color: #f3f5fb;
+        overflow: auto;
+      }
+      dialog::backdrop { background: rgb(0 0 0 / 75%); }
+      dialog h2 { margin: 0 0 12px; font-size: 20px; }
+      .calibration-preview {
+        position: relative;
+        margin-top: 16px;
+        background: #090c13;
+        cursor: crosshair;
+        touch-action: none;
+        user-select: none;
+        line-height: 0;
+      }
+      .calibration-preview img { display: block; width: 100%; height: auto; pointer-events: none; }
+      .calibration-rectangle {
+        position: absolute;
+        box-sizing: border-box;
+        border: 2px solid #a5b4ff;
+        background: rgb(147 164 255 / 20%);
+        pointer-events: none;
+      }
+      .calibration-rectangle[data-active="true"] { border-color: #ffe29c; background: rgb(237 201 112 / 20%); }
+      .calibration-rectangle span {
+        position: absolute; left: -2px; bottom: 100%; padding: 3px 6px;
+        background: #202941; color: #fff; font-size: 12px; line-height: 1.3; white-space: nowrap;
+      }
+      .calibration-slots { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+      .calibration-slots button[aria-pressed="true"] { border-color: #ffe29c; color: #ffe29c; }
+      .calibration-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      .calibration-fields label { display: grid; gap: 6px; font-size: 13px; }
+      .calibration-fields input {
+        box-sizing: border-box; width: 100%; min-height: 44px; padding: 8px;
+        border: 1px solid #475479; border-radius: 8px; background: #171d31; color: #f3f5fb; font: inherit;
+      }
+      .calibration-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+      .calibration-preview[hidden] { display: none; }
+      @media (max-width: 600px) {
+        main { padding: 32px 16px; }
+        .card { padding: 18px; }
+        .calibration-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        dialog { padding: 16px; }
+      }
     </style>
   </head>
   <body>
@@ -378,6 +445,25 @@
         <div class="status">
           <span class="label">数据更新</span>
           <button id="sync-button" type="button">手动同步全球数据</button>
+        </div>
+      </section>
+
+      <section class="card" id="local-ocr" aria-labelledby="local-ocr-heading">
+        <h2 class="ocr-heading" id="local-ocr-heading">本地识别与浮层</h2>
+        <p class="search-hint">识别屏幕中的三个海克斯标题，在浮层中按左、中、右原位展示胜率。截图仅用于本地识别，无需上传。</p>
+        <div class="ocr-controls">
+          <label class="ocr-toggle" for="ocr-enabled"><input id="ocr-enabled" type="checkbox" disabled />启用本地识别浮层</label>
+          <label class="ocr-display" for="ocr-display">游戏所在显示器
+            <select id="ocr-display" disabled><option value="">正在读取显示器…</option></select>
+          </label>
+        </div>
+        <p class="ocr-state" id="ocr-state" role="status" aria-live="polite">正在连接本地识别…</p>
+        <p class="search-hint" id="ocr-calibration-state">支持默认 16:9 标题区域，也可截图校准</p>
+        <p class="error ocr-feedback" id="ocr-feedback" role="alert"></p>
+        <div class="ocr-controls">
+          <button id="ocr-scan" type="button" disabled>手动识别一次</button>
+          <button id="ocr-calibrate" class="secondary" type="button" disabled>截图校准</button>
+          <button id="ocr-reset" class="secondary" type="button" disabled>重置校准</button>
         </div>
       </section>
 
@@ -425,6 +511,34 @@
 
       <p class="error" id="detail-error" hidden></p>
     </main>
+    <dialog id="ocr-calibration" aria-labelledby="calibration-heading" aria-describedby="calibration-instructions">
+      <h2 id="calibration-heading">校准三个标题区域</h2>
+      <p id="calibration-instructions" class="search-hint">先在游戏中打开三个海克斯选项。截图时助手会短暂隐藏。按左、中、右依次拖框，只圈住标题文字；反向拖动也可，框不会超出截图。点击对应按钮可重画，也可用下方百分比输入框调整位置与大小。</p>
+      <p id="calibration-message" role="status" aria-live="polite">正在截取所选显示器…</p>
+      <div id="calibration-editor" hidden>
+        <div class="calibration-slots" role="group" aria-label="选择要校准的标题">
+          <button type="button" class="secondary" data-calibration-slot="0" aria-pressed="true">左侧标题 · 未框选</button>
+          <button type="button" class="secondary" data-calibration-slot="1" aria-pressed="false">中间标题 · 未框选</button>
+          <button type="button" class="secondary" data-calibration-slot="2" aria-pressed="false">右侧标题 · 未框选</button>
+        </div>
+        <div id="calibration-preview" class="calibration-preview" role="group" aria-label="完整截图，拖动框选当前标题区域" aria-describedby="calibration-instructions">
+          <img id="calibration-image" alt="所选显示器的完整截图，用于校准三个海克斯标题区域" draggable="false" />
+        </div>
+        <p id="calibration-field-label" class="search-hint">左侧标题的位置与大小（占截图百分比）</p>
+        <div id="calibration-fields" class="calibration-fields" role="group" aria-labelledby="calibration-field-label">
+          <label for="calibration-x">左边距（%）<input id="calibration-x" type="number" min="0" max="100" step="0.1" /></label>
+          <label for="calibration-y">上边距（%）<input id="calibration-y" type="number" min="0" max="100" step="0.1" /></label>
+          <label for="calibration-width">宽度（%）<input id="calibration-width" type="number" min="0.1" max="100" step="0.1" /></label>
+          <label for="calibration-height">高度（%）<input id="calibration-height" type="number" min="0.1" max="100" step="0.1" /></label>
+        </div>
+      </div>
+      <p id="calibration-validation" class="error" role="alert"></p>
+      <div class="calibration-actions">
+        <button id="calibration-cancel" class="secondary" type="button" autofocus>取消</button>
+        <button id="calibration-retry" class="secondary" type="button">重新截图</button>
+        <button id="calibration-save" type="button" disabled>保存三个区域</button>
+      </div>
+    </dialog>
     <script type="module" src="./renderer.js"></script>
   </body>
 </html>

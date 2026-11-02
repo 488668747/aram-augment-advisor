@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'none'; connect-src 'none';" />
+    <title>海克斯胜率浮层</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #f3f5fb;
+        background: transparent;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+      body { pointer-events: none; user-select: none; }
+      main { display: flex; flex-direction: column; gap: 5px; height: 100%; padding: 6px 8px; }
+      .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; flex: 1; min-height: 0; }
+      .slot {
+        --rarity: #c7d1e8;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding: 8px 12px;
+        border: 1px solid #475479;
+        border-top: 3px solid var(--rarity);
+        border-radius: 10px;
+        background: rgb(15 20 33 / 94%);
+      }
+      .slot[data-rarity="prismatic"] { --rarity: #d6b7ff; }
+      .slot[data-rarity="gold"] { --rarity: #edc970; }
+      .slot[data-rarity="silver"] { --rarity: #d8deeb; }
+      .slot-header { display: flex; justify-content: space-between; gap: 8px; color: #c2cbe1; font-size: 12px; line-height: 16px; }
+      .rarity { color: var(--rarity); }
+      h2 { margin: 4px 0; font-size: 16px; line-height: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .stats { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; margin-top: auto; }
+      .win-rate { font-size: 22px; line-height: 27px; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .stat-label, .games { font-size: 12px; color: #c2cbe1; line-height: 16px; }
+      footer {
+        display: flex; justify-content: space-between; gap: 12px;
+        padding: 2px 8px; border-radius: 4px; background: rgb(15 20 33 / 94%);
+        color: #c2cbe1; font-size: 12px; line-height: 16px; white-space: nowrap;
+      }
+      #overlay-status { overflow: hidden; text-overflow: ellipsis; }
+      #overlay-champion { max-width: 50%; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+      @media (max-width: 560px) {
+        main { padding: 4px; }
+        .cards { gap: 4px; }
+        .slot { padding: 6px; }
+        h2 { font-size: 14px; }
+        .win-rate { font-size: 18px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main aria-label="三个海克斯的当前英雄胜率">
+      <div class="cards" id="overlay-cards" aria-live="polite">
+        <article class="slot" data-slot="0" aria-label="左侧海克斯">
+          <div class="slot-header"><span>左侧</span><span class="rarity">稀有度未知</span></div>
+          <h2>未识别</h2>
+          <div class="stats"><span class="win-rate">—</span><span class="stat-label">胜率未知</span><span class="games">样本量未知</span></div>
+        </article>
+        <article class="slot" data-slot="1" aria-label="中间海克斯">
+          <div class="slot-header"><span>中间</span><span class="rarity">稀有度未知</span></div>
+          <h2>未识别</h2>
+          <div class="stats"><span class="win-rate">—</span><span class="stat-label">胜率未知</span><span class="games">样本量未知</span></div>
+        </article>
+        <article class="slot" data-slot="2" aria-label="右侧海克斯">
+          <div class="slot-header"><span>右侧</span><span class="rarity">稀有度未知</span></div>
+          <h2>未识别</h2>
+          <div class="stats"><span class="win-rate">—</span><span class="stat-label">胜率未知</span><span class="games">样本量未知</span></div>
+        </article>
+      </div>
+      <footer><span id="overlay-status" role="status">正在连接本地识别…</span><span id="overlay-champion">当前英雄待确认</span></footer>
+    </main>
+    <script type="module" src="./overlay.js"></script>
+  </body>
+</html>

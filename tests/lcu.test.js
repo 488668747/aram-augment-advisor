@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { LcuClient, parseLockfile } from '../src/main/lcu-client.js';
 import { discoverLockfilePath, extractInstallDirectory } from '../src/main/lcu-discovery.js';
-import { createChampSelectSnapshot, LcuService } from '../src/main/lcu-service.js';
+import { createChampSelectSnapshot, LcuService, resolveGameflowChampion } from '../src/main/lcu-service.js';
 
 test('解析 LCU lockfile', () => {
   assert.deepEqual(parseLockfile('LeagueClient:1234:2999:secret:https'), {
@@ -93,4 +93,55 @@ test('从进程命令行提取安装目录和 lockfile', async () => {
     exec: async () => ({ stdout: 'LeagueClientUx.exe --install-directory="C:\\Riot Games\\League of Legends"\n' }),
   });
   assert.equal(lockfilePath, 'C:\\Riot Games\\League of Legends\\lockfile');
+});
+
+test('保留选人英雄进入实际对局，回到大厅后清除本局英雄', async () => {
+  let phase='ChampSelect', validGame=true;
+  const service=new LcuService({findLockfile:async()=>'/test/lockfile',read:async()=>({}),
+    createClient:()=>({getGameflowPhase:async()=>phase,getChampSelectSession:async()=>({localPlayerCellId:7,myTeam:[{cellId:7,championId:17}]}),getGameflowSession:async()=>phase==='InProgress'&&validGame?({gameData:{playerChampionSelections:[{summonerId:7,championId:17}]}}):{},getCurrentSummoner:async()=>({summonerId:7})})});
+  assert.equal((await service.getSnapshot()).championId,17);
+  phase='GameStart';assert.equal((await service.getSnapshot()).championId,17);
+  phase='InProgress';assert.equal((await service.getSnapshot()).championId,17);
+  phase='Lobby';assert.equal((await service.getSnapshot()).championId,0);
+  validGame=false;phase='InProgress';assert.equal((await service.getSnapshot()).championId,0);
+});
+
+test('进入对局时核实最终英雄，不能继续使用最后一次选人快照',async()=>{
+ let phase='ChampSelect';
+ const service=new LcuService({findLockfile:async()=>'/test/lock',read:async()=>({}),createClient:()=>({
+  getGameflowPhase:async()=>phase,
+  getChampSelectSession:async()=>({localPlayerCellId:7,myTeam:[{cellId:7,championId:1}]}),
+  getGameflowSession:async()=>({gameData:{playerChampionSelections:[{summonerId:7,championId:17},{summonerId:8,championId:55}]}}),
+  getCurrentSummoner:async()=>({summonerId:7}),
+ })});
+ assert.equal((await service.getSnapshot()).championId,1);
+ phase='InProgress';assert.equal((await service.getSnapshot()).championId,17);
+});
+
+test('对局无法核实自身英雄时不继续显示选人旧数据，并合并并发查询',async()=>{
+ let phase='ChampSelect',queries=0;
+ const service=new LcuService({findLockfile:async()=>'/test/lock',read:async()=>({}),createClient:()=>({
+  getGameflowPhase:async()=>{queries++;return phase;},
+  getChampSelectSession:async()=>({localPlayerCellId:7,myTeam:[{cellId:7,championId:1}]}),
+  getGameflowSession:async()=>({gameData:{playerChampionSelections:[{summonerId:8,championId:55}]}}),
+  getCurrentSummoner:async()=>({summonerId:7}),
+ })});
+ await Promise.all([service.getSnapshot(),service.getSnapshot()]);assert.equal(queries,1);
+ phase='InProgress';assert.equal((await service.getSnapshot()).championId,0);
+});
+
+
+test('最终英雄按自身身份匹配，不能用无效 ID 或冲突记录猜测', () => {
+  const game={gameData:{teamOne:[{puuid:'self',championId:17}],teamTwo:[{puuid:'other',championId:55}]}};
+  assert.equal(resolveGameflowChampion(game,{puuid:'self'}),17);
+  assert.equal(resolveGameflowChampion({gameData:{teamOne:[{summonerId:0,championId:55}]}},{summonerId:0}),0);
+  assert.equal(resolveGameflowChampion({gameData:{teamOne:[{summonerId:7,championId:17}],playerChampionSelections:[{summonerId:7,championId:1}]}},{summonerId:7}),0);
+});
+
+test('对局查询期间阶段已结束时不继续返回 InProgress，身份冲突不认作自己',async()=>{
+ const service=new LcuService({findLockfile:async()=>'/test/lock',read:async()=>({}),createClient:()=>({
+  getGameflowPhase:async()=> 'InProgress',getGameflowSession:async()=>({phase:'EndOfGame',gameData:{teamOne:[{summonerId:7,championId:17}]}}),getCurrentSummoner:async()=>({summonerId:7}),
+ })});
+ assert.deepEqual(await service.getSnapshot(),{status:'connected',phase:'EndOfGame',championId:0});
+ assert.equal(resolveGameflowChampion({gameData:{teamOne:[{summonerId:7,puuid:'other',championId:55}]}},{summonerId:7,puuid:'self'}),0);
 });

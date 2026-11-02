@@ -24,16 +24,38 @@ export function createChampSelectSnapshot({ phase, session }) {
   };
 }
 
+export function resolveGameflowChampion(gameflow, summoner) {
+  const data = gameflow?.gameData ?? {};
+  const summonerId = /^[1-9]\d*$/.test(String(summoner?.summonerId)) ? String(summoner.summonerId) : null;
+  const records = [data.playerChampionSelections, data.teamOne, data.teamTwo]
+    .flatMap(value => Array.isArray(value) ? value : []);
+  const champions = new Set(records.filter(player => {
+    if (summoner?.puuid && player.puuid && player.puuid !== summoner.puuid) return false;
+    return (summonerId !== null && String(player.summonerId) === summonerId)
+      || (typeof summoner?.puuid === 'string' && summoner.puuid && player.puuid === summoner.puuid);
+  })
+    .map(player => player.championId).filter(id => Number.isInteger(id) && id > 0));
+  return champions.size === 1 ? [...champions][0] : 0;
+}
+
 export class LcuService {
   constructor({ findLockfile = discoverLockfilePath, read = readLockfile, createClient = (connection) => new LcuClient(connection) } = {}) {
     this.findLockfile = findLockfile;
     this.read = read;
     this.createClient = createClient;
+    this.currentChampionId = 0;
+    this.pendingSnapshot = null;
   }
 
-  async getSnapshot() {
+  getSnapshot() {
+    this.pendingSnapshot ??= this.readSnapshot().finally(() => { this.pendingSnapshot = null; });
+    return this.pendingSnapshot;
+  }
+
+  async readSnapshot() {
     const lockfilePath = await this.findLockfile();
     if (!lockfilePath) {
+      this.currentChampionId = 0;
       return { status: 'disconnected', phase: 'Unavailable', championId: 0 };
     }
 
@@ -41,12 +63,26 @@ export class LcuService {
       const connection = await this.read(lockfilePath);
       const client = this.createClient(connection);
       const phase = await client.getGameflowPhase();
+      if (phase === 'InProgress') {
+        const [gameflow, summoner] = await Promise.all([client.getGameflowSession(), client.getCurrentSummoner()]);
+        if (typeof gameflow?.phase === 'string' && gameflow.phase !== 'InProgress') {
+          this.currentChampionId = 0;
+          return { status: 'connected', phase: gameflow.phase, championId: 0 };
+        }
+        this.currentChampionId = resolveGameflowChampion(gameflow, summoner);
+        return { status: 'connected', phase, championId: this.currentChampionId };
+      }
       if (phase !== 'ChampSelect') {
-        return { status: 'connected', phase, championId: 0 };
+        if (!['GameStart', 'InProgress', 'Reconnect', 'WaitingForStats', 'PreEndOfGame'].includes(phase)) {
+          this.currentChampionId = 0;
+        }
+        return { status: 'connected', phase, championId: this.currentChampionId };
       }
 
       const session = await client.getChampSelectSession();
-      return createChampSelectSnapshot({ phase, session });
+      const snapshot = createChampSelectSnapshot({ phase, session });
+      this.currentChampionId = snapshot.championId;
+      return snapshot;
     } catch (error) {
       return {
         status: 'error',

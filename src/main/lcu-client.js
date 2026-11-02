@@ -69,4 +69,12 @@ export class LcuClient {
   getChampSelectSession() {
     return this.request('/lol-champ-select/v1/session', this.connection);
   }
+
+  getGameflowSession() {
+    return this.request('/lol-gameflow/v1/session', this.connection);
+  }
+
+  getCurrentSummoner() {
+    return this.request('/lol-summoner/v1/current-summoner', this.connection);
+  }
 }

@@ -1,6 +1,6 @@
 {
   "name": "aram-augment-advisor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "海克斯大乱斗强化符文助手",
   "author": "488668747",
   "private": true,
@@ -10,11 +10,17 @@
     "test": "node --test",
     "data:import": "node scripts/import-data.mjs",
     "data:sync": "node scripts/sync-global-data.mjs",
+    "ocr:prepare": "node scripts/prepare-ocr.mjs",
+    "verify:overlay": "electron scripts/verify-overlay.cjs",
     "start": "electron .",
+    "predist:dir": "npm run ocr:prepare",
     "dist:dir": "electron-builder --dir",
+    "predist:win": "npm run ocr:prepare",
     "dist:win": "electron-builder --win nsis --x64"
   },
   "devDependencies": {
+    "@tesseract.js-data/chi_sim": "1.0.0",
+    "@tesseract.js-data/eng": "1.0.0",
     "electron": "^39.0.0",
     "electron-builder": "^26.0.12"
   },
@@ -22,11 +28,26 @@
     "appId": "com.aramaugmentadvisor.desktop",
     "productName": "海克斯大乱斗助手",
     "asar": true,
-    "files": ["src/**/*", "package.json"],
+    "asarUnpack": [
+      "node_modules/**/*"
+    ],
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
     "extraResources": [
       {
         "from": "data/runtime",
         "to": "data/runtime"
+      },
+      {
+        "from": "resources/ocr",
+        "to": "ocr",
+        "filter": [
+          "**/*",
+          "!**/*.test.js",
+          "!tests/**/*"
+        ]
       }
     ],
     "win": {
@@ -34,7 +55,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -43,5 +66,8 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
+  },
+  "dependencies": {
+    "tesseract.js": "6.0.1"
   }
 }
