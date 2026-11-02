@@ -7,6 +7,21 @@ export class DataValidationError extends Error {
 
 const DATA_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
+export function validateRelativeDataPath(filePath) {
+  if (
+    typeof filePath !== 'string'
+    || filePath.length === 0
+    || filePath.startsWith('/')
+    || filePath.includes('\\')
+    || filePath.includes('\0')
+    || filePath.split('/').some((segment) => segment === '' || segment === '.' || segment === '..')
+  ) {
+    throw new DataValidationError(`包含不安全的文件路径：${String(filePath)}`);
+  }
+
+  return filePath;
+}
+
 export function validateDataVersion(dataVersion) {
   if (typeof dataVersion !== 'string' || !DATA_VERSION_PATTERN.test(dataVersion)) {
     throw new DataValidationError(`无效的数据版本：${String(dataVersion)}`);

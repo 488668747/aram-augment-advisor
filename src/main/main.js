@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 
 import { app, BrowserWindow, ipcMain } from 'electron';
 
@@ -9,7 +10,11 @@ const currentFile = fileURLToPath(import.meta.url);
 const currentDirectory = path.dirname(currentFile);
 
 function getDataRoot() {
-  return path.resolve(currentDirectory, '../../data');
+  const dataDirectory = path.resolve(currentDirectory, '../../data');
+  const runtimeDirectory = path.join(dataDirectory, 'runtime');
+  return existsSync(path.join(runtimeDirectory, 'current.json'))
+    ? runtimeDirectory
+    : dataDirectory;
 }
 
 function createMainWindow() {

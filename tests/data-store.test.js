@@ -117,3 +117,20 @@ test('导入校验失败时保留原激活版本', async () => {
   const active = await readActiveDataSet(dataRoot);
   assert.equal(active.manifest.dataVersion, '16.20.5');
 });
+
+test('允许用新数据替换同一版本并保持激活指针有效', async () => {
+  const dataRoot = await mkdtemp(path.join(os.tmpdir(), 'aram-augment-advisor-data-'));
+  const firstSource = await createImportSource('16.21.5');
+  const replacementSource = await createImportSource('16.21.5');
+
+  await importDataVersion({ sourceDirectory: firstSource, dataRoot });
+  const result = await importDataVersion({
+    sourceDirectory: replacementSource,
+    dataRoot,
+    replaceExisting: true,
+  });
+
+  const active = await readActiveDataSet(dataRoot);
+  assert.equal(result.dataVersion, '16.21.5');
+  assert.equal(active.manifest.dataVersion, '16.21.5');
+});

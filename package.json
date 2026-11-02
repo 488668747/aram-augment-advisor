@@ -7,6 +7,7 @@
   "scripts": {
     "test": "node --test",
     "data:import": "node scripts/import-data.mjs",
+    "data:sync": "node scripts/sync-global-data.mjs",
     "start": "electron ."
   },
   "devDependencies": {

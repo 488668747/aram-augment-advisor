@@ -74,3 +74,20 @@
 2. 运行完整测试和 Git diff 检查。
 3. 提交：`docs: 补充本地数据使用说明`
 
+### Task 5: 增加全球数据手动同步器
+
+**Files:**
+- Create: `src/shared/data-source.js`
+- Create: `scripts/sync-global-data.mjs`
+- Test: `tests/data-source.test.js`
+- Modify: `src/main/data-store.js`
+- Modify: `src/main/main.js`
+
+**Steps:**
+
+1. 测试远端 manifest 的来源、路径、语言和哈希校验。
+2. 实现限并发、可重试的手动同步脚本。
+3. 把同步结果保存到被忽略的 `data/runtime/`，并让客户端优先使用本地缓存。
+4. 用当前全球数据源跑一次完整同步，确认 222 个文件能被本地激活。
+5. 提交：`feat: 增加全球数据手动同步`
+

@@ -12,6 +12,7 @@ import path from 'node:path';
 
 import {
   DataValidationError,
+  validateRelativeDataPath,
   validateDataVersion,
   validateManifest,
 } from '../shared/data-model.js';
@@ -33,17 +34,11 @@ async function readJson(filePath) {
 }
 
 function validateRelativeFilePath(filePath) {
-  if (
-    typeof filePath !== 'string'
-    || filePath.length === 0
-    || path.isAbsolute(filePath)
-    || filePath.includes('\0')
-    || filePath.split(/[\\/]/).some((segment) => segment === '' || segment === '.' || segment === '..')
-  ) {
+  try {
+    return validateRelativeDataPath(filePath);
+  } catch {
     throw new DataValidationError(`manifest 包含不安全的文件路径：${String(filePath)}`);
   }
-
-  return filePath;
 }
 
 async function sha256File(filePath) {
@@ -118,13 +113,14 @@ export async function readActiveDataSet(dataRoot) {
   };
 }
 
-export async function importDataVersion({ sourceDirectory, dataRoot }) {
+export async function importDataVersion({ sourceDirectory, dataRoot, replaceExisting = false }) {
   const source = path.resolve(sourceDirectory);
   const root = path.resolve(dataRoot);
   const sourceManifest = await validateVersionDirectory(source, { requireFileHashes: true });
   const versionsDirectory = path.join(root, 'versions');
   const targetDirectory = path.join(versionsDirectory, sourceManifest.dataVersion);
   const temporaryDirectory = path.join(versionsDirectory, `.import-${randomUUID()}`);
+  let backupDirectory;
 
   await mkdir(versionsDirectory, { recursive: true });
 
@@ -134,12 +130,14 @@ export async function importDataVersion({ sourceDirectory, dataRoot }) {
 
     try {
       await stat(targetDirectory);
-      throw new DataValidationError(`数据版本已存在：${manifest.dataVersion}`);
-    } catch (error) {
-      if (!(error instanceof Error) || error.code !== 'ENOENT') {
-        if (error instanceof DataValidationError) throw error;
-        throw error;
+      if (!replaceExisting) {
+        throw new DataValidationError(`数据版本已存在：${manifest.dataVersion}`);
       }
+      backupDirectory = `${targetDirectory}.backup-${randomUUID()}`;
+      await rename(targetDirectory, backupDirectory);
+    } catch (error) {
+      if (error instanceof DataValidationError) throw error;
+      if (!(error instanceof Error) || error.code !== 'ENOENT') throw error;
     }
 
     await rename(temporaryDirectory, targetDirectory);
@@ -148,6 +146,7 @@ export async function importDataVersion({ sourceDirectory, dataRoot }) {
     const temporaryPointerPath = path.join(root, `.current-${randomUUID()}.json`);
     await writeFile(temporaryPointerPath, `${JSON.stringify({ dataVersion: manifest.dataVersion }, null, 2)}\n`);
     await rename(temporaryPointerPath, pointerPath);
+    if (backupDirectory) await rm(backupDirectory, { recursive: true, force: true });
 
     return {
       dataVersion: manifest.dataVersion,
@@ -156,6 +155,10 @@ export async function importDataVersion({ sourceDirectory, dataRoot }) {
     };
   } catch (error) {
     await rm(temporaryDirectory, { recursive: true, force: true });
+    if (backupDirectory) {
+      await rm(targetDirectory, { recursive: true, force: true });
+      await rename(backupDirectory, targetDirectory).catch(() => {});
+    }
     throw error;
   }
 }

@@ -35,6 +35,18 @@ champion + selectedAugments + candidateAugment -> stats
 
 ## 手动更新
 
+### 自动整理数据源
+
+执行：
+
+```bash
+npm run data:sync
+```
+
+脚本读取当前配置和 manifest，下载全球数据文件，限制并发请求并对每个文件检查字节数和 SHA-256，最后导入到 `data/runtime/`。同一补丁的数据再次同步时会先完成新版本校验，再替换旧缓存。
+
+### 手动导入数据包
+
 1. 从数据源整理出一个新的版本目录。
 2. 为每个文件计算 SHA-256。
 3. 把文件路径和哈希写入 `manifest.json`。
