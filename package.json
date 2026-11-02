@@ -12,7 +12,7 @@
     "data:sync": "node scripts/sync-global-data.mjs",
     "start": "electron .",
     "dist:dir": "electron-builder --dir",
-    "dist:win": "electron-builder --win nsis"
+    "dist:win": "electron-builder --win nsis --x64"
   },
   "devDependencies": {
     "electron": "^39.0.0",
@@ -22,6 +22,7 @@
     "appId": "com.aramaugmentadvisor.desktop",
     "productName": "海克斯大乱斗助手",
     "asar": true,
+    "files": ["src/**/*", "package.json"],
     "extraResources": [
       {
         "from": "data/runtime",
@@ -29,6 +30,7 @@
       }
     ],
     "win": {
+      "signAndEditExecutable": false,
       "target": [
         {
           "target": "nsis",
@@ -37,6 +39,7 @@
       ]
     },
     "nsis": {
+      "artifactName": "aram-augment-advisor-${version}-win-${arch}-setup.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
