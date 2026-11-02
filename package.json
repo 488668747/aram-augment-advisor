@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "src/main/main.js",
   "scripts": {
     "test": "node --test",
-    "data:import": "node scripts/import-data.mjs"
+    "data:import": "node scripts/import-data.mjs",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^39.0.0"
   }
 }
