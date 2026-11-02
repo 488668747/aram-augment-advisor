@@ -10,6 +10,22 @@
   },
   "files": [
     {
+      "path": "augments.json",
+      "sha256": "8053ee6d69f47fa81f493575a1ff9461c862802179e81be9668efaa18dae836c"
+    },
+    {
+      "path": "champions/1.json",
+      "sha256": "81f37c6d6102ee70777caf7bdfa96ae8382a6e9dc82bb7980023ed4c874ec01f"
+    },
+    {
+      "path": "champions.json",
+      "sha256": "5a9aec6c496b6f70c1691e7ac751bf3d795b0929624ed41c3e30d6f5d1f9df8d"
+    },
+    {
+      "path": "items.json",
+      "sha256": "3e33751d5f9de791a0446f1c76020289a3027bcef141602369a11df521397a75"
+    },
+    {
       "path": "sample-data.json",
       "sha256": "c13e9f085115eda5ba0834155202fe4b0031a2fd1b1bf53c22065d53974d89d9"
     }

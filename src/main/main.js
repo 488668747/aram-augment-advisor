@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { app, BrowserWindow, ipcMain } from 'electron';
 
 import { readActiveDataSet } from './data-store.js';
+import { readChampionList, readChampionOverview } from './data-query.js';
 
 const currentFile = fileURLToPath(import.meta.url);
 const currentDirectory = path.dirname(currentFile);
@@ -44,6 +45,16 @@ ipcMain.handle('data:get-active', async () => {
     generatedAt: active.manifest.generatedAt,
     source: active.manifest.source ?? null,
   };
+});
+
+ipcMain.handle('data:get-champions', async () => readChampionList(getDataRoot()));
+
+ipcMain.handle('data:get-champion-overview', async (_event, championId) => {
+  if (!Number.isInteger(championId) || championId <= 0) {
+    throw new Error('英雄 ID 无效');
+  }
+
+  return readChampionOverview(getDataRoot(), championId);
 });
 
 app.whenReady().then(() => {

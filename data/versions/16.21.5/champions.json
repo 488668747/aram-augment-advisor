@@ -1,0 +1,17 @@
+{
+  "data": [
+    {
+      "id": 1,
+      "alias": "Annie",
+      "name": "安妮",
+      "title": "黑暗之女",
+      "roles": ["mage", "support"],
+      "iconUrl": "https://cdn.dtodo.cn/hextech/champion-icons/1.png",
+      "stats": {
+        "winRate": 0.4911,
+        "pickRate": 0.0223,
+        "gamePatch": "16.21"
+      }
+    }
+  ]
+}

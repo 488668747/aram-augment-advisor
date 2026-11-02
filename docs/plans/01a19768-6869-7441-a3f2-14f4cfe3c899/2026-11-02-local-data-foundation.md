@@ -91,3 +91,22 @@
 4. 用当前全球数据源跑一次完整同步，确认 222 个文件能被本地激活。
 5. 提交：`feat: 增加全球数据手动同步`
 
+### Task 6: 接入离线英雄详情和推荐展示
+
+**Files:**
+- Create: `src/main/data-query.js`
+- Create: `tests/data-query.test.js`
+- Modify: `src/main/main.js`
+- Modify: `src/preload/preload.cjs`
+- Modify: `src/renderer/index.html`
+- Modify: `src/renderer/renderer.js`
+- Modify: `data/versions/16.21.5/*`
+
+**Steps:**
+
+1. 测试英雄详情能够整理当前英雄胜率、海克斯胜率和核心装备。
+2. 实现本地数据查询和 IPC 白名单接口。
+3. 在 Electron 窗口增加英雄选择、胜率、海克斯列表和装备卡片。
+4. 用内置示例数据、同步后的全球数据和 Electron 启动命令分别验证。
+5. 提交：`feat: 增加离线英雄详情展示`
+

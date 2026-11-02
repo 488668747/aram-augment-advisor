@@ -113,6 +113,25 @@ export async function readActiveDataSet(dataRoot) {
   };
 }
 
+export async function readActiveDataFile(dataRoot, relativePath) {
+  const active = await readActiveDataSet(dataRoot);
+  let safePath;
+
+  try {
+    safePath = validateRelativeDataPath(relativePath);
+  } catch {
+    throw new DataValidationError(`数据文件路径不安全：${String(relativePath)}`);
+  }
+
+  const filePath = path.resolve(active.versionDirectory, safePath);
+  const versionRoot = `${path.resolve(active.versionDirectory)}${path.sep}`;
+  if (!filePath.startsWith(versionRoot)) {
+    throw new DataValidationError(`数据文件超出版本目录：${safePath}`);
+  }
+
+  return readJson(filePath);
+}
+
 export async function importDataVersion({ sourceDirectory, dataRoot, replaceExisting = false }) {
   const source = path.resolve(sourceDirectory);
   const root = path.resolve(dataRoot);

@@ -1,0 +1,39 @@
+{
+  "dataVersion": "16.21.5",
+  "championId": 1,
+  "champion": {
+    "id": 1,
+    "alias": "Annie",
+    "name": "安妮",
+    "title": "黑暗之女",
+    "iconUrl": "https://cdn.dtodo.cn/hextech/champion-icons/1.png",
+    "stats": {
+      "winRate": 0.4911,
+      "gamePatch": "16.21"
+    }
+  },
+  "augments": [
+    {
+      "id": 1030,
+      "name": "尤里卡",
+      "rarity": 2,
+      "rarityName": "prismatic",
+      "iconUrl": "https://cdn.dtodo.cn/hextech/augment-icons/eureka_large.png",
+      "stats": {
+        "games": 1000,
+        "wins": 540,
+        "winRate": 0.54
+      }
+    }
+  ],
+  "build": {
+    "coreItems": [
+      {
+        "itemIds": [3089],
+        "games": 100,
+        "wins": 55,
+        "winRate": 0.55
+      }
+    ]
+  }
+}

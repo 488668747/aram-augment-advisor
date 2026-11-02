@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://cdn.dtodo.cn data:;"
     />
     <title>ARAM Augment Advisor</title>
     <style>
@@ -53,6 +53,128 @@
         border-radius: 18px;
         background: rgba(19, 24, 39, 0.82);
         box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 28px;
+      }
+
+      select {
+        flex: 1;
+        padding: 12px 14px;
+        border: 1px solid #3b466a;
+        border-radius: 10px;
+        color: #f3f5fb;
+        background: #171d31;
+        font: inherit;
+      }
+
+      .section-title {
+        margin: 28px 0 12px;
+        color: #dce2f5;
+        font-size: 18px;
+      }
+
+      .champion-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .champion-header img {
+        width: 64px;
+        height: 64px;
+        border-radius: 14px;
+      }
+
+      .champion-name {
+        margin: 0;
+        font-size: 24px;
+      }
+
+      .champion-title {
+        margin: 4px 0 0;
+        color: #8994b1;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .stat-box {
+        padding: 16px;
+        border-radius: 12px;
+        background: #171d31;
+      }
+
+      .stat-box .label {
+        display: block;
+        font-size: 13px;
+      }
+
+      .stat-box .value {
+        display: block;
+        margin-top: 6px;
+        font-size: 22px;
+      }
+
+      .augment-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .augment,
+      .item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid #2b334d;
+        border-radius: 12px;
+        background: #151a2a;
+      }
+
+      .augment img,
+      .item img {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: #252d47;
+      }
+
+      .augment-main,
+      .item-main {
+        min-width: 0;
+      }
+
+      .augment-name,
+      .item-name {
+        overflow: hidden;
+        color: #f3f5fb;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .augment-meta,
+      .item-meta {
+        margin-top: 4px;
+        color: #8994b1;
+        font-size: 12px;
+      }
+
+      .item-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
       }
 
       .status {
@@ -106,6 +228,41 @@
           <span class="value" id="data-source">—</span>
         </div>
       </section>
+
+      <div class="toolbar">
+        <label for="champion-select">当前英雄</label>
+        <select id="champion-select" disabled>
+          <option>正在读取英雄数据…</option>
+        </select>
+      </div>
+
+      <section class="card" id="champion-card" hidden>
+        <div class="champion-header">
+          <img id="champion-icon" alt="" />
+          <div>
+            <h2 class="champion-name" id="champion-name">—</h2>
+            <p class="champion-title" id="champion-title">—</p>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-box">
+            <span class="label">当前英雄胜率</span>
+            <strong class="value" id="champion-win-rate">—</strong>
+          </div>
+          <div class="stat-box">
+            <span class="label">数据补丁</span>
+            <strong class="value" id="champion-patch">—</strong>
+          </div>
+        </div>
+
+        <h3 class="section-title">该英雄的海克斯胜率</h3>
+        <div class="augment-list" id="augment-list"></div>
+
+        <h3 class="section-title">推荐核心装备</h3>
+        <div class="item-list" id="item-list"></div>
+      </section>
+
+      <p class="error" id="detail-error" hidden></p>
     </main>
     <script type="module" src="./renderer.js"></script>
   </body>
