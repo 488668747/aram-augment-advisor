@@ -27,7 +27,7 @@ if (process.env.RELEASE_TAG) assert.equal(process.env.RELEASE_TAG, `v${version}`
 for (const filename of ['src/main/main.js', 'src/main/lcu-service.js', 'src/main/overlay-manager.js',
   'src/main/overlay-controller.js', 'src/main/ocr-engine.js', 'src/preload/preload.cjs',
   'src/renderer/overlay.js', 'src/renderer/renderer.js']) {
-  assert.equal(normalizeText(extractFile(archive, filename)), normalizeText(await readFile(path.join(project, filename))), filename);
+  assert.equal(normalizeText(extractFile(archive, path.normalize(filename))), normalizeText(await readFile(path.join(project, filename))), filename);
 }
 const executable = await readFile(path.join(dist, 'win-unpacked', '海克斯大乱斗助手.exe'));
 assert.equal(executable.readUInt16LE(executable.readUInt32LE(0x3c) + 4), 0x8664, '程序必须是 x64');
