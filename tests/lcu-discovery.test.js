@@ -63,7 +63,7 @@ test('Windows 自动扫描覆盖两种客户端进程，限制超时、隐藏命
       assert.match(args.at(-1), /LeagueClientUx\.exe.*LeagueClient\.exe/);
       assert.match(args.at(-1), /UTF8Encoding/);
       assert.equal(options.windowsHide, true);
-      assert.equal(options.timeout, 4000);
+      assert.equal(options.timeout, 15000);
       return { stdout: '[]' };
     },
   }), null);

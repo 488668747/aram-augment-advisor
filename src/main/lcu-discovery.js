@@ -56,7 +56,7 @@ async function getProcessLocations(platform, exec = execFileAsync) {
       '-NonInteractive',
       '-Command',
       "[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding; $ErrorActionPreference = 'Stop'; @(Get-CimInstance Win32_Process -Filter \"Name = 'LeagueClientUx.exe' OR Name = 'LeagueClient.exe'\" | Select-Object ExecutablePath,CommandLine) | ConvertTo-Json -Compress",
-    ], { timeout: 4000, windowsHide: true, encoding: 'utf8', maxBuffer: 1024 * 1024 });
+    ], { timeout: 15000, windowsHide: true, encoding: 'utf8', maxBuffer: 1024 * 1024 });
     const output = result.stdout.trim().replace(/^\uFEFF/, '');
     if (!output) return [];
     if (/^[\[{]/.test(output)) {
