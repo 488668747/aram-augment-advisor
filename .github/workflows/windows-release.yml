@@ -1,7 +1,10 @@
-name: Windows 安装包发布
+name: Windows 检查与安装包发布
 
 on:
   push:
+    branches:
+      - 'feature/local-data-foundation'
+      - 'codex/**'
     tags:
       - 'v*'
 
@@ -32,6 +35,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: 检查版本与标签
+        if: github.ref_type == 'tag'
         shell: pwsh
         run: |
           $version = node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version"
@@ -41,14 +45,29 @@ jobs:
       - name: 准备离线 OCR 模型
         run: npm run ocr:prepare
       - name: 运行测试
-        run: npm test
+        shell: pwsh
+        run: |
+          $testLog = Join-Path $env:RUNNER_TEMP 'aram-windows-tests.log'
+          & npm test *> $testLog
+          $testExitCode = $LASTEXITCODE
+          Get-Content $testLog
+          if ($testExitCode -ne 0) {
+            $details = (Get-Content $testLog -Tail 180) -join "`n"
+            $details = $details.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows 测试失败摘要::$details"
+            exit $testExitCode
+          }
       - name: 下载本地统计数据
+        if: github.ref_type == 'tag'
         run: npm run data:sync
       - name: 构建 Windows x64 安装包
+        if: github.ref_type == 'tag'
         run: npm run dist:win -- --publish never
       - name: 校验安装包资源并生成 SHA-256
+        if: github.ref_type == 'tag'
         run: node scripts/verify-windows-package.mjs
       - name: 保存构建产物
+        if: github.ref_type == 'tag'
         uses: actions/upload-artifact@v7
         with:
           name: windows-x64-${{ github.ref_name }}
@@ -59,6 +78,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
       - name: 发布 GitHub Release
+        if: github.ref_type == 'tag'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
