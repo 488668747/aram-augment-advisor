@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { OverlayController } from '../src/main/overlay-controller.js';
+import { LcuService } from '../src/main/lcu-service.js';
 
 const frames = ['甲强化', '乙强化', '丙强化'].map(text => ({ text, confidence: .99 }));
 const catalog = frames.map((r, i) => ({ id: i + 1, name: r.text, rarity: 1 }));
@@ -62,5 +63,27 @@ test('部分识别保留槽位，连续漏读清空，不从单卡或重复三�
   await controller.scanOnce();await controller.scanOnce();
   assert.equal(controller.getState().visible,false);
   assert(controller.getState().slots.every(x=>x.missing));
+  controller.dispose();
+});
+
+test('客户端来源切换后即使阶段和英雄相同，也不能显示前一个客户端的 OCR 结果', async () => {
+  let finish, filename = '/client-a/lockfile';
+  const { controller, counts } = setup({ recognizeSlots: () => new Promise(resolve => { finish = resolve; }) });
+  const service = new LcuService({ findLockfile: async () => filename, read: async () => ({}),
+    onConnectionChange: () => controller.updateSession({ status: 'disconnected', phase: 'Unavailable', championId: 0 }),
+    createClient: () => ({ getGameflowPhase: async () => 'InProgress',
+      getGameflowSession: async () => ({ gameData: { teamOne: [{ summonerId: 7, championId: 17 }] } }),
+      getCurrentSummoner: async () => ({ summonerId: 7 }),
+    }),
+  });
+  controller.updateSession(await service.getSnapshot());
+  const pending = controller.scanOnce();
+  await new Promise(resolve => setImmediate(resolve));
+  filename = '/client-b/lockfile';
+  controller.updateSession(await service.getSnapshot());
+  finish(frames);
+  await pending;
+  assert.equal(counts().shows, 0);
+  assert.equal(controller.getState().visible, false);
   controller.dispose();
 });

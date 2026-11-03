@@ -1,6 +1,6 @@
 {
   "name": "aram-augment-advisor",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "海克斯大乱斗强化符文助手",
   "author": "488668747",
   "private": true,
@@ -12,6 +12,7 @@
     "data:sync": "node scripts/sync-global-data.mjs",
     "ocr:prepare": "node scripts/prepare-ocr.mjs",
     "verify:overlay": "electron scripts/verify-overlay.cjs",
+    "verify:lcu": "electron scripts/verify-lcu.cjs",
     "start": "electron .",
     "predist:dir": "npm run ocr:prepare",
     "dist:dir": "electron-builder --dir",

@@ -1,6 +1,6 @@
 # Windows 选人识别测试
 
-安装包：`dist/aram-augment-advisor-0.2.3-win-x64-setup.exe`，适用于 Windows 10/11 x64。
+安装包：`dist/aram-augment-advisor-0.2.4-win-x64-setup.exe`，适用于 Windows 10/11 x64。
 
 1. 将安装包复制到 Windows 电脑，双击安装并打开“海克斯大乱斗助手”。不用安装 Node.js，也不用先同步数据，包内已有 16.21.5 统计数据。
 2. 在同一台电脑启动国服 League Client，登录并进入大乱斗选人界面。
@@ -14,7 +14,9 @@
 
 模型随安装包内置，不需要安装 Python 或联网下载。详细校准步骤和限制见 [本地 OCR 与浮窗](local-ocr-overlay.md)。
 
-若没有跟随，反馈应用里的 League Client 状态、游戏安装目录，以及是否通过 WeGame 启动。当前版本自动查找常见目录和进程命令行里的 `--install-directory`；未覆盖的安装方式可能需要补充发现逻辑。
+若没有跟随，先在首页“客户端目录”选择英雄联盟安装目录或其中的 `LeagueClient` 目录，点击“保存并检测”。也可直接粘贴 `LeagueClient.exe` 的完整路径；不要选择 WeGame 启动器目录。有效安装目录可在客户端启动前保存，程序重启后应保留配置。“清除配置”恢复仅自动检测。
+
+当前版本同时查询 `LeagueClient.exe` 和 `LeagueClientUx.exe` 的实际程序路径与 `--install-directory` 参数，并检查根目录和 `LeagueClient` 子目录中的连接文件。目录保存后仍失败时，反馈状态下方的具体原因（连接文件、权限或本地接口）和通过 WeGame 启动与否。若客户端以管理员身份运行，请让助手使用相同权限。不要发送 lockfile 内容或包含连接令牌的进程命令行。
 
 测试包尚未签名。已在 macOS 完成 Windows x64 构建、安装包归档完整性、包内源码与全部 222 个数据文件校验、离线 OCR 模型 SHA-256 与打包 worker/WASM 路径核验；实际使用打包资源完成了中文字图识别。模拟 LCU、真实 OCR、三槽窗口、校准与失败暂停测试已通过；尚未在真实 Windows 国服客户端验证安装、屏幕截图及独占全屏表现。
 

@@ -2,17 +2,27 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 
 import { readActiveDataSet } from './data-store.js';
 import { readChampionList, readChampionOverview } from './data-query.js';
 import { syncGlobalData } from './data-sync.js';
 import { LcuService } from './lcu-service.js';
+import { discoverLockfilePaths } from './lcu-discovery.js';
+import { loadLcuSettings, saveLcuSettings, validateClientDirectory } from './lcu-settings.js';
 import { createOverlayManager } from './overlay-manager.js';
 
 const currentFile = fileURLToPath(import.meta.url);
 const currentDirectory = path.dirname(currentFile);
-const lcuService = new LcuService();
+let lcuSettings = { clientDirectory: '' };
+let cachedLockfiles;
+let cacheExpiresAt = 0;
+const lcuService = new LcuService({ findLockfile: async () => {
+  if (cachedLockfiles?.length && Date.now() < cacheExpiresAt && cachedLockfiles.every(filename => existsSync(filename))) return cachedLockfiles;
+  cachedLockfiles = await discoverLockfilePaths({ configuredPath: lcuSettings.clientDirectory });
+  cacheExpiresAt = Date.now() + 15000;
+  return cachedLockfiles;
+}, onConnectionChange: () => invalidateLcuSession() });
 let lcuPollTimer;
 let lcuPollInFlight = false;
 let mainWindow;
@@ -97,8 +107,49 @@ ipcMain.handle('data:sync', async (event) => {
 
 ipcMain.handle('lcu:get-snapshot', () => lcuService.getSnapshot());
 
+function handleLcuSetting(channel, operation) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (event.sender !== mainWindow?.webContents || event.senderFrame !== event.sender.mainFrame) {
+      throw new Error('客户端配置仅允许应用主窗口修改');
+    }
+    return operation(...args);
+  });
+}
+
+handleLcuSetting('lcu:get-settings', () => lcuSettings);
+handleLcuSetting('lcu:choose-directory', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: '选择英雄联盟安装目录或 LeagueClient 目录',
+    defaultPath: lcuSettings.clientDirectory || undefined,
+    properties: ['openDirectory'],
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+handleLcuSetting('lcu:save-directory', async value => {
+  const directory = validateClientDirectory(value);
+  lcuSettings = await saveLcuSettings(path.join(app.getPath('userData'), 'lcu-settings.json'), directory);
+  // 等待旧查询结束，保证重新检测不会复用修改前的查询或英雄。
+  await lcuService.pendingSnapshot;
+  cachedLockfiles = null;
+  lcuService.currentChampionId = 0;
+  lcuService.connectionKey = null;
+  invalidateLcuSession();
+  return lcuSettings;
+});
+handleLcuSetting('lcu:retry', async () => {
+  await lcuService.pendingSnapshot;
+  cachedLockfiles = null;
+  return pollLcu();
+});
+
+function invalidateLcuSession() {
+  const snapshot = { status: 'disconnected', phase: 'Unavailable', championId: 0 };
+  overlayManager?.updateSession(snapshot);
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('lcu:snapshot', snapshot);
+}
+
 async function pollLcu() {
-  if (lcuPollInFlight) return;
+  if (lcuPollInFlight) return lcuService.getSnapshot();
   lcuPollInFlight = true;
   try {
     const snapshot = await lcuService.getSnapshot();
@@ -106,12 +157,14 @@ async function pollLcu() {
     for (const window of BrowserWindow.getAllWindows()) {
       if (!window.isDestroyed()) window.webContents.send('lcu:snapshot', snapshot);
     }
+    return snapshot;
   } finally {
     lcuPollInFlight = false;
   }
 }
 
 app.whenReady().then(async () => {
+  lcuSettings = await loadLcuSettings(path.join(app.getPath('userData'), 'lcu-settings.json'));
   createMainWindow();
   overlayManager = await createOverlayManager({ getMainWindow: () => mainWindow, getDataRoot });
   await mainWindow.loadFile(path.resolve(currentDirectory, '../renderer/index.html'));

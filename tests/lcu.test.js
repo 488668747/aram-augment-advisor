@@ -145,3 +145,47 @@ test('对局查询期间阶段已结束时不继续返回 InProgress，身份冲
  assert.deepEqual(await service.getSnapshot(),{status:'connected',phase:'EndOfGame',championId:0});
  assert.equal(resolveGameflowChampion({gameData:{teamOne:[{summonerId:7,puuid:'other',championId:55}]}},{summonerId:7,puuid:'self'}),0);
 });
+
+test('目录发现异常转为可展示的状态，不使轮询崩溃', async () => {
+  const service = new LcuService({ findLockfile: async () => { throw new Error('请手动选择客户端目录'); } });
+  assert.deepEqual(await service.getSnapshot(), { status: 'error', phase: 'Unavailable', championId: 0,
+    message: '请手动选择客户端目录' });
+});
+
+test('文件权限失败给出可执行提示并清除之前的本局英雄', async () => {
+  const service = new LcuService({ findLockfile: async () => '/test/lockfile',
+    read: async () => { throw Object.assign(new Error('denied'), { code: 'EACCES' }); } });
+  service.currentChampionId = 17;
+  const snapshot = await service.getSnapshot();
+  assert.equal(snapshot.championId, 0);
+  assert.equal(service.currentChampionId, 0);
+  assert.match(snapshot.message, /权限/);
+});
+
+test('自动候选连接失败时继续尝试手动配置目录，不被残留连接文件挡住', async () => {
+  const readPaths = [];
+  const service = new LcuService({ findLockfile: async () => ['/stale/lockfile', '/manual/lockfile'],
+    read: async filename => { readPaths.push(filename); return { filename }; },
+    createClient: connection => ({ getGameflowPhase: async () => {
+      if (connection.filename.includes('stale')) throw Object.assign(new Error('refused'), { code: 'ECONNREFUSED' });
+      return 'ChampSelect';
+    }, getChampSelectSession: async () => ({ localPlayerCellId: 7, myTeam: [{ cellId: 7, championId: 17 }] }) }),
+  });
+  assert.equal((await service.getSnapshot()).championId, 17);
+  assert.deepEqual(readPaths, ['/stale/lockfile', '/manual/lockfile']);
+});
+
+test('客户端连接来源变化时先使旧会话失效，不继承原客户端的英雄', async () => {
+  let filename = '/client-a/lockfile', invalidations = 0;
+  const service = new LcuService({ findLockfile: async () => filename,
+    read: async () => ({ pid: 1, port: 2999, token: 'private' }),
+    onConnectionChange: () => { invalidations++; },
+    createClient: () => ({ getGameflowPhase: async () => filename.includes('client-a') ? 'ChampSelect' : 'GameStart',
+      getChampSelectSession: async () => ({ localPlayerCellId: 7, myTeam: [{ cellId: 7, championId: 17 }] }) }),
+  });
+  assert.equal((await service.getSnapshot()).championId, 17);
+  const prior = invalidations;
+  filename = '/client-b/lockfile';
+  assert.equal((await service.getSnapshot()).championId, 0);
+  assert.equal(invalidations, prior + 1);
+});

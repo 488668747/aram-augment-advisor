@@ -214,6 +214,9 @@ async function loadLocalData() {
 }
 
 async function applyLcuSnapshot(snapshot) {
+  document.querySelector('#lcu-connection-detail').textContent = snapshot.status === 'error'
+    ? (snapshot.message ?? '连接失败，请检查客户端目录和运行权限。')
+    : snapshot.status === 'disconnected' ? '请启动并登录英雄联盟客户端；若已启动，请配置客户端目录后重新检测。' : '';
   if (snapshot.status === 'connected' && ['ChampSelect', 'InProgress'].includes(snapshot.phase)) {
     lcuStatusElement.textContent = snapshot.phase === 'InProgress' ? '已连接，正在对局' : '已连接，正在选人';
     if (snapshot.championId > 0 && champions.some((champion) => champion.id === snapshot.championId)) {
@@ -243,6 +246,48 @@ async function applyLcuSnapshot(snapshot) {
 
 // OCR 初始化独立于本地数据和客户端连接，开发阶段缺少接口也能打开原页面。
 initializeLocalOcr();
+initializeLcuSettings();
+
+async function initializeLcuSettings() {
+  const api = window.aramAugmentAdvisor?.lcu;
+  const directory = document.querySelector('#lcu-directory');
+  const browse = document.querySelector('#lcu-browse');
+  const save = document.querySelector('#lcu-save');
+  const retry = document.querySelector('#lcu-retry');
+  const clear = document.querySelector('#lcu-clear');
+  const feedback = document.querySelector('#lcu-feedback');
+  const controls = [directory, browse, save, retry, clear];
+  if (!api?.getSettings) return;
+  const run = async operation => {
+    controls.forEach(control => { control.disabled = true; });
+    feedback.textContent = '';
+    try { await operation(); }
+    catch (error) { feedback.textContent = error instanceof Error ? error.message : String(error); }
+    finally { controls.forEach(control => { control.disabled = false; }); }
+  };
+  const detect = async () => {
+    feedback.textContent = '正在重新检测客户端…';
+    await applyLcuSnapshot(await api.retry());
+    feedback.textContent = '';
+  };
+  const persist = value => run(async () => {
+    const settings = await api.saveDirectory(value);
+    directory.value = settings.clientDirectory;
+    await detect();
+    feedback.textContent = settings.clientDirectory ? '客户端目录已保存，下次启动会自动使用。' : '已清除手动目录，继续自动检测。';
+  });
+  browse.addEventListener('click', () => run(async () => {
+    const selected = await api.chooseDirectory();
+    if (selected) { directory.value = selected; feedback.textContent = '已选择目录，请点击“保存并检测”。'; }
+  }));
+  save.addEventListener('click', () => persist(directory.value));
+  retry.addEventListener('click', () => run(detect));
+  clear.addEventListener('click', () => persist(''));
+  directory.addEventListener('keydown', event => {
+    if (event.key === 'Enter' && !event.isComposing) { event.preventDefault(); void persist(directory.value); }
+  });
+  await run(async () => { directory.value = (await api.getSettings()).clientDirectory; });
+}
 
 window.aramAugmentAdvisor?.data?.onSyncProgress?.(({ completed, total }) => {
   statusElement.textContent = `正在同步数据 ${completed}/${total}`;

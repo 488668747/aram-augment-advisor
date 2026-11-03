@@ -76,6 +76,7 @@ async function cleanup() {
   ipcMain.handle('data:get-champions', () => readChampionList(dataRoot));
   ipcMain.handle('data:get-champion-overview', (_event, id) => readChampionOverview(dataRoot, id));
   ipcMain.handle('lcu:get-snapshot', () => lcu.getSnapshot());
+  ipcMain.handle('lcu:get-settings', () => ({ clientDirectory: '' }));
   let captures = 0;
   manager = await createOverlayManager({ getMainWindow: () => main, getDataRoot: () => dataRoot,
     capture: async () => { captures++; return image; } });

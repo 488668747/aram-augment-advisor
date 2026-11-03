@@ -1,4 +1,4 @@
-import { discoverLockfilePath } from './lcu-discovery.js';
+import { discoverLockfilePaths } from './lcu-discovery.js';
 import { LcuClient, readLockfile } from './lcu-client.js';
 
 function getLocalPlayer(session) {
@@ -39,10 +39,12 @@ export function resolveGameflowChampion(gameflow, summoner) {
 }
 
 export class LcuService {
-  constructor({ findLockfile = discoverLockfilePath, read = readLockfile, createClient = (connection) => new LcuClient(connection) } = {}) {
+  constructor({ findLockfile = discoverLockfilePaths, read = readLockfile, createClient = (connection) => new LcuClient(connection), onConnectionChange = () => {} } = {}) {
     this.findLockfile = findLockfile;
     this.read = read;
     this.createClient = createClient;
+    this.onConnectionChange = onConnectionChange;
+    this.connectionKey = null;
     this.currentChampionId = 0;
     this.pendingSnapshot = null;
   }
@@ -53,16 +55,32 @@ export class LcuService {
   }
 
   async readSnapshot() {
-    const lockfilePath = await this.findLockfile();
-    if (!lockfilePath) {
-      this.currentChampionId = 0;
-      return { status: 'disconnected', phase: 'Unavailable', championId: 0 };
-    }
-
     try {
-      const connection = await this.read(lockfilePath);
-      const client = this.createClient(connection);
-      const phase = await client.getGameflowPhase();
+      const discovered = await this.findLockfile();
+      const paths = Array.isArray(discovered) ? discovered : discovered ? [discovered] : [];
+      if (!paths.length) {
+        this.currentChampionId = 0;
+        this.connectionKey = null;
+        return { status: 'disconnected', phase: 'Unavailable', championId: 0 };
+      }
+      let client, phase, connectionKey, lastError;
+      for (const filename of paths) {
+        try {
+          const connection = await this.read(filename);
+          const candidate = this.createClient(connection);
+          phase = await candidate.getGameflowPhase();
+          client = candidate;
+          // 此身份仅存在主进程内存中，不发送给界面或写入配置。
+          connectionKey = JSON.stringify([filename, connection.pid, connection.port, connection.token]);
+          break;
+        } catch (error) { lastError = error; }
+      }
+      if (!client) throw lastError;
+      if (connectionKey !== this.connectionKey) {
+        this.currentChampionId = 0;
+        this.connectionKey = connectionKey;
+        this.onConnectionChange();
+      }
       if (phase === 'InProgress') {
         const [gameflow, summoner] = await Promise.all([client.getGameflowSession(), client.getCurrentSummoner()]);
         if (typeof gameflow?.phase === 'string' && gameflow.phase !== 'InProgress') {
@@ -84,11 +102,19 @@ export class LcuService {
       this.currentChampionId = snapshot.championId;
       return snapshot;
     } catch (error) {
+      this.currentChampionId = 0;
+      this.connectionKey = null;
+      const hints = {
+        EACCES: '客户端连接文件没有读取权限，请让助手与客户端使用相同的运行权限。',
+        EPERM: '客户端连接文件没有读取权限，请让助手与客户端使用相同的运行权限。',
+        ENOENT: '客户端连接文件已失效，正在重新检测。请确认客户端已启动并登录。',
+        ECONNREFUSED: '已找到客户端连接文件，但本地接口暂未就绪，请等待客户端完成启动。',
+      };
       return {
         status: 'error',
         phase: 'Unavailable',
         championId: 0,
-        message: error instanceof Error ? error.message : String(error),
+        message: hints[error?.code] ?? (error instanceof Error ? error.message : String(error)),
       };
     }
   }

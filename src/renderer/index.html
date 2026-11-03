@@ -99,6 +99,15 @@
         font: inherit;
       }
 
+      .lcu-settings { margin-top: 12px; padding-bottom: 16px; border-bottom: 1px solid #2b334d; }
+      .lcu-settings label { display: block; margin-bottom: 8px; color: #adb6ce; font-size: 14px; }
+      .lcu-path-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+      .lcu-path-row input { flex: 1 1 280px; min-width: 0; box-sizing: border-box; padding: 10px 12px;
+        border: 1px solid #3b466a; border-radius: 10px; color: #f3f5fb; background: #171d31; font: inherit; }
+      .lcu-path-row input:focus-visible { outline: 2px solid #93a4ff; outline-offset: 2px; }
+      .lcu-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 8px; }
+      .lcu-feedback { overflow-wrap: anywhere; }
+
       select {
         appearance: none;
         padding-right: 48px;
@@ -429,6 +438,22 @@
         <div class="status">
           <span class="label">League Client</span>
           <span class="value" id="lcu-status">正在检测…</span>
+        </div>
+        <div class="lcu-settings">
+          <label for="lcu-directory">客户端目录（自动检测失败时使用）</label>
+          <div class="lcu-path-row">
+            <input id="lcu-directory" type="text" autocomplete="off" spellcheck="false" disabled
+              placeholder="例如 D:\腾讯游戏\英雄联盟" aria-describedby="lcu-directory-hint" />
+            <button id="lcu-browse" class="secondary" type="button" disabled>选择目录</button>
+          </div>
+          <p id="lcu-directory-hint" class="search-hint">选择英雄联盟安装目录或其中的 LeagueClient 目录，也可粘贴 LeagueClient.exe 的完整路径。</p>
+          <div class="lcu-actions">
+            <button id="lcu-save" type="button" disabled>保存并检测</button>
+            <button id="lcu-retry" class="secondary" type="button" disabled>重新检测</button>
+            <button id="lcu-clear" class="secondary" type="button" disabled>清除配置</button>
+          </div>
+          <p id="lcu-feedback" class="search-hint lcu-feedback" role="status" aria-live="polite"></p>
+          <p id="lcu-connection-detail" class="search-hint lcu-feedback" role="status" aria-live="polite"></p>
         </div>
         <div class="status">
           <span class="label">数据版本</span>

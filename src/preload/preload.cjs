@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld('aramAugmentAdvisor', {
   },
   lcu: {
     getSnapshot: () => ipcRenderer.invoke('lcu:get-snapshot'),
+    getSettings: () => ipcRenderer.invoke('lcu:get-settings'),
+    chooseDirectory: () => ipcRenderer.invoke('lcu:choose-directory'),
+    saveDirectory: (directory) => ipcRenderer.invoke('lcu:save-directory', directory),
+    retry: () => ipcRenderer.invoke('lcu:retry'),
     onSnapshot: (listener) => ipcRenderer.on('lcu:snapshot', (_event, snapshot) => listener(snapshot)),
   },
   overlay: {
