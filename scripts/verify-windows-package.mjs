@@ -24,7 +24,7 @@ const version = JSON.parse(await readFile(path.join(project, 'package.json'), 'u
 assert.equal(packed.version, version, '安装包版本与代码版本不一致');
 if (process.env.RELEASE_TAG) assert.equal(process.env.RELEASE_TAG, `v${version}`);
 
-for (const filename of ['src/main/main.js', 'src/main/lcu-service.js', 'src/main/lcu-discovery.js',
+for (const filename of ['src/main/main.js', 'src/main/lcu-service.js', 'src/main/lcu-discovery.js', 'src/main/lcu-client.js',
   'src/main/lcu-settings.js', 'src/renderer/index.html', 'src/main/overlay-manager.js',
   'src/main/overlay-controller.js', 'src/main/ocr-engine.js', 'src/preload/preload.cjs',
   'src/renderer/overlay.js', 'src/renderer/renderer.js']) {

@@ -44,7 +44,9 @@ async function until(probe, description) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const lockfile = path.join(client, 'lockfile');
-  await writeFile(lockfile, `LeagueClient:123:${server.address().port}:fixture-only:http`);
+  await writeFile(lockfile, '');
+  const clientLog = path.join(client, 'LeagueClientUx.log');
+  await writeFile(clientLog, `fixture LCU http://riot:fixture-only@127.0.0.1:${server.address().port}\n`);
   // 残留自动候选不能阻断后续手动目录中的有效连接。
   const staleLockfile = path.join(temporary, 'stale-lockfile');
   await writeFile(staleLockfile, 'invalid stale fixture');
@@ -82,6 +84,7 @@ async function until(probe, description) {
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, (await main.webContents.capturePage()).toPNG());
   await unlink(lockfile);
+  await unlink(clientLog);
   await unlink(staleLockfile);
   delete process.env.ARAM_LCU_LOCKFILE_PATH;
   await run('document.querySelector("#lcu-retry").click()');

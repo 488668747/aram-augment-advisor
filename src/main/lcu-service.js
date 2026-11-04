@@ -1,5 +1,5 @@
-import { discoverLockfilePaths } from './lcu-discovery.js';
-import { LcuClient, readLockfile } from './lcu-client.js';
+import { discoverLcuCandidates } from './lcu-discovery.js';
+import { LcuClient, readLockfile, readLogConnection } from './lcu-client.js';
 
 function getLocalPlayer(session) {
   const cellId = session?.localPlayerCellId;
@@ -39,7 +39,7 @@ export function resolveGameflowChampion(gameflow, summoner) {
 }
 
 export class LcuService {
-  constructor({ findLockfile = discoverLockfilePaths, read = readLockfile, createClient = (connection) => new LcuClient(connection), onConnectionChange = () => {} } = {}) {
+  constructor({ findLockfile = discoverLcuCandidates, read = readLockfile, createClient = (connection) => new LcuClient(connection), onConnectionChange = () => {} } = {}) {
     this.findLockfile = findLockfile;
     this.read = read;
     this.createClient = createClient;
@@ -66,12 +66,13 @@ export class LcuService {
       let client, phase, connectionKey, lastError;
       for (const filename of paths) {
         try {
-          const connection = await this.read(filename);
+          const connection = typeof filename === 'string' ? await this.read(filename)
+            : filename.kind === 'process' ? filename.connection : await readLogConnection(filename.path);
           const candidate = this.createClient(connection);
           phase = await candidate.getGameflowPhase();
           client = candidate;
           // 此身份仅存在主进程内存中，不发送给界面或写入配置。
-          connectionKey = JSON.stringify([filename, connection.pid, connection.port, connection.token]);
+          connectionKey = JSON.stringify([typeof filename === 'string' ? filename : filename.kind === 'log' ? filename.path : 'process', connection.pid, connection.port, connection.token]);
           break;
         } catch (error) { lastError = error; }
       }

@@ -8,7 +8,7 @@ import { readActiveDataSet } from './data-store.js';
 import { readChampionList, readChampionOverview } from './data-query.js';
 import { syncGlobalData } from './data-sync.js';
 import { LcuService } from './lcu-service.js';
-import { discoverLockfilePaths } from './lcu-discovery.js';
+import { discoverLcuCandidates } from './lcu-discovery.js';
 import { loadLcuSettings, saveLcuSettings, validateClientDirectory } from './lcu-settings.js';
 import { createOverlayManager } from './overlay-manager.js';
 
@@ -18,8 +18,9 @@ let lcuSettings = { clientDirectory: '' };
 let cachedLockfiles;
 let cacheExpiresAt = 0;
 const lcuService = new LcuService({ findLockfile: async () => {
-  if (cachedLockfiles?.length && Date.now() < cacheExpiresAt && cachedLockfiles.every(filename => existsSync(filename))) return cachedLockfiles;
-  cachedLockfiles = await discoverLockfilePaths({ configuredPath: lcuSettings.clientDirectory });
+  if (cachedLockfiles?.length && Date.now() < cacheExpiresAt && cachedLockfiles.every(candidate =>
+    typeof candidate === 'string' ? existsSync(candidate) : candidate.kind === 'process' || existsSync(candidate.path))) return cachedLockfiles;
+  cachedLockfiles = await discoverLcuCandidates({ configuredPath: lcuSettings.clientDirectory });
   cacheExpiresAt = Date.now() + 15000;
   return cachedLockfiles;
 }, onConnectionChange: () => invalidateLcuSession() });
